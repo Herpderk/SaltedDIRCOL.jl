@@ -1,4 +1,17 @@
-using SaltedDIRCOL
+"""
+Contains various pre-defined models of hybrid dynamical systems in the form of
+Dict{String, HybridMode}.
+"""
+function generate_model(
+    key_mode_pairs::Vector{Tuple{String, HybridMode}}
+)::Dict{String, HybridMode}
+    model = Dict()
+    for pair in key_mode_pairs
+        key, mode = pair...
+        model[key] = mode
+    end
+    return Model
+end
 
 function bouncing_ball(
     e::Float64 = 1.0,
@@ -23,8 +36,8 @@ function bouncing_ball(
     down_mode.transitions = [impact]
 
     # Create hybrid system with labels
-    return Dict(
-        "upwards" => up_mode,
-        "downwards" => down_mode
-    )
+    return generate_model([
+        ("upwards", up_mode),
+        ("downwards", down_mode)
+    ])
 end
