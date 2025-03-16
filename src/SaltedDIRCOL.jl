@@ -7,6 +7,7 @@ using Ipopt
 export
     Transition,
     HybridMode,
+    HybridSystem,
     bouncing_ball
 
 include("hybrid_system.jl")

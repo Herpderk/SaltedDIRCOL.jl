@@ -1,23 +1,4 @@
 """
-Constructs a Dict that maps keys to modes given pairs of keys and modes.
-
-Input:
-    key_mode_pairs - Vector{Tuple{String, HybridMode}}
-
-Output:
-    model - Dict{String, HybridMode}
-"""
-function generate_model(
-    key_mode_pairs::Vector{Tuple{String, HybridMode}}
-)::Dict{String, HybridMode}
-    model = Dict()
-    for (key, mode) = key_mode_pairs
-        model[key] = mode
-    end
-    return model
-end
-
-"""
 Models the modes and transitions of a 2D elastic bouncing ball system.
 
 Input:
@@ -25,14 +6,16 @@ Input:
     g - FLoat64 representing the acceleration due to gravity
 
 Output:
-    model - Dict{String, HybridMode} with "upwards" and "downwards" mode keys
+    model - HybridSystem with "upwards" and "downwards" mode keys
 """
 function bouncing_ball(
     e::Float64 = 1.0,
     g::Float64 = 9.81
-)::Dict{String, HybridMode}
+)::HybridSystem
     # Model ballistic dynamics with thrust
     # State space: x, y, xdot, ydot
+    nx = 4
+    nu = 1
     ballistic_flow = (x,u) -> [x[3:4]; 0.0; u - g]
     up_mode = HybridMode(ballistic_flow)
     down_mode = HybridMode(ballistic_flow)
@@ -50,8 +33,9 @@ function bouncing_ball(
     down_mode.transitions = [impact]
 
     # Create hybrid system with labels
-    return generate_model([
+    key_mode_pairs = [
         ("upwards", up_mode),
         ("downwards", down_mode)
-    ])
+    ]
+    return HybridSystem(key_mode_pairs, nx, nu)
 end
