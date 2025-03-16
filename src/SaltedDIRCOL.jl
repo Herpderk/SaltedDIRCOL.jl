@@ -1,6 +1,6 @@
 module SaltedDIRCOL
 
-using ForwardDiff
+import ForwardDiff as FD
 using JuMP
 using Ipopt
 
