@@ -16,8 +16,6 @@ function derive_saltation_matrix(
     return salt
 end
 
-abstract type T end
-
 struct Transition
     prev_mode
     next_mode
