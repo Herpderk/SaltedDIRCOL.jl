@@ -1,6 +1,11 @@
 """
-Contains various pre-defined models of hybrid dynamical systems in the form of
-Dict{String, HybridMode}.
+Constructs a Dict that maps keys to modes given pairs of keys and modes.
+
+Input:
+    key_mode_pairs - Vector{Tuple{String, HybridMode}}
+
+Output:
+    model - Dict{String, HybridMode}
 """
 function generate_model(
     key_mode_pairs::Vector{Tuple{String, HybridMode}}
@@ -12,6 +17,16 @@ function generate_model(
     return model
 end
 
+"""
+Models the modes and transitions of a 2D elastic bouncing ball system.
+
+Input:
+    e - Float64 representing the coefficient of restitution
+    g - FLoat64 representing the acceleration due to gravity
+
+Output:
+    model - Dict{String, HybridMode} with "upwards" and "downwards" mode keys
+"""
 function bouncing_ball(
     e::Float64 = 1.0,
     g::Float64 = 9.81
