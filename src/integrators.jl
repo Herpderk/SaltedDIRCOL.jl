@@ -1,3 +1,7 @@
+"""
+Contains various explicit and implicit integrators for discretizing
+continuous-time dynamics.
+"""
 function rk4(
     dynamics::Function,
     h::Float64
