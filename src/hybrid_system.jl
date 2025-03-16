@@ -1,6 +1,6 @@
-using JuMP
-import ForwardDiff as FD
-
+"""
+Contains infrastructure for modeling hybrid modes and transitions.
+"""
 function derive_saltation_matrix(
     prev_flow::Function,
     next_flow::Function,
@@ -45,6 +45,6 @@ mutable struct HybridMode
         flow::Function,
         transitions::Union{Vector{Transition}, Nothing} = nothing
     )
-        new(flow, transitions)
+        return new(flow, transitions)
     end
 end
