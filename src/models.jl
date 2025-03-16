@@ -6,11 +6,10 @@ function generate_model(
     key_mode_pairs::Vector{Tuple{String, HybridMode}}
 )::Dict{String, HybridMode}
     model = Dict()
-    for pair in key_mode_pairs
-        key, mode = pair...
+    for (key, mode) = key_mode_pairs
         model[key] = mode
     end
-    return Model
+    return model
 end
 
 function bouncing_ball(
