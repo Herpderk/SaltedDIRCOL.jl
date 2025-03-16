@@ -11,5 +11,6 @@ export
 
 include("hybrid_system.jl")
 include("models.jl")
+include("integrators.jl")
 
 end # module SaltedDIRCOL
