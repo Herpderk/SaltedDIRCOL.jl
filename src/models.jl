@@ -2,7 +2,7 @@
 Models the modes and transitions of a 2D elastic bouncing ball system.
 Input:
     e - Float64 representing the coefficient of restitution
-    g - FLoat64 representing the acceleration due to gravity
+    g - Float64 representing the acceleration due to gravity
 Output:
     model - HybridSystem with "upwards" and "downwards" mode keys
 """
