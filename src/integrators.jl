@@ -1,19 +1,19 @@
 """
 Explicit integrator using the fourth order Runge-Kutta method.
 Input:
-    dynamics - Vector{Float64} Function of state x and input u
-    x - Vector{Float64} representing the system's state at a given time
-    u - Vector{Float64} representing the system's input at a given time
-    h - Float64 representing the integration time step
+    dynamics - Vector Function of state x and input u
+    x - Vector representing the system's state at a given time
+    u - Vector representing the system's input at a given time
+    h - Flo representing the integration time step
 Output:
-    next x - Vector{Float64} representing the next state after the time step
+    next x - Vector representing the next state after the time step
 """
 function rk4(
     dynamics::Function,
-    x::Vector{Float64},
-    u::Vector{Float64},
-    h::Float64
-)::Vector{Float64}
+    x::Vector,
+    u::Vector,
+    h::Union{Float64, VariableRef}
+)::Vector
     k1 = dynamics(x, u)
     k2 = dynamics(x + h/2 * k1, u)
     k3 = dynamics(x + h/2 * k2, u)

@@ -1,13 +1,12 @@
 """
 Derives the function for computing the saltation matrix for a given transition.
 Input:
-    prev_flow - Vector{Float64} Function of Vector{Float64} state x
-    next_flow - Vector{Float64} Function of Vector{Float64} state x
-    guard - Float64 Function of Vector{Float64} state x
-    reset - Vector{Float64} Function of Vector{Float64} state x
+    prev_flow - Vector Function of Vector state x
+    next_flow - Vector Function of Vector state x
+    guard - scalar Function of Vector state x
+    reset - Vector Function of Vector state x
 Output:
-    saltation_expr - Matrix{Float64} Function of Vector{Float64} state x
-                     and Vector{Float64} input u
+    saltation_expr - Matrix Function of Vector state x and input u
 """
 function derive_saltation_matrix(
     prev_flow::Function,
@@ -29,8 +28,8 @@ Contains the hybrid system objects pertaining to a hybrid transition.
 Input:
     prev_mode - HybridMode
     next_mode - HybridMode
-    guard - Float64 Function of Vector{Float64} state x
-    reset - Vector{Float64} Function of Vector{Float64} state x
+    guard - scalar Function of Vector state x
+    reset - Vector Function of Vector state x
 Output:
     transition - Transition struct containing prev_mode, next_mode, guard,
                  reset, and saltation matrix expression
@@ -60,7 +59,7 @@ end
 """
 Contains the hybrid system objects pertaining to a hybrid mode.
 Input:
-    flow - Vector{Float64} Function of Vector{Float64} state x and input u
+    flow - Vector Function of Vector state x and input u
     transitions - optional Vector{Transition}
 Output:
     hybrid mode - HybridMode struct containing flow and transitions
