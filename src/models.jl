@@ -14,7 +14,8 @@ function bouncing_ball(
     # State space: x, y, xdot, ydot
     nx = 4
     nu = 1
-    ballistic_flow = (x,u) -> [x[3:4]; 0.0; u - g]
+
+    ballistic_flow = (x,u) -> [x[3:4]; 0.0; u[1] - g]
     up_mode = HybridMode(ballistic_flow)
     down_mode = HybridMode(ballistic_flow)
 
