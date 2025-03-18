@@ -2,8 +2,7 @@ module SaltedDIRCOL
 
 import ForwardDiff as FD
 using LinearAlgebra
-using JuMP
-using Ipopt
+using Nonconvex
 
 include("hybrid_system.jl")
 include("models.jl")

@@ -35,82 +35,40 @@ Output:
                  reset, and saltation matrix expression
 """
 struct Transition
-    prev_mode
-    next_mode
+    flow_I::Function
+    flow_J::Function
     guard::Function
     reset::Function
     saltation::Function
     function Transition(
-        prev_mode,
-        next_mode,
+        flow_I::Function,
+        flow_J::Function,
         guard::Function,
         reset::Function
     )
-        salt_expr = derive_saltation_matrix(
-            prev_mode.flow,
-            next_mode.flow,
-            guard,
-            reset
-        )
-        return new(prev_mode, next_mode, guard, reset, salt_expr)
+        salt_expr = derive_saltation_matrix(flow_I, flow_J, guard, reset)
+        return new(flow_I, flow_J, guard, reset, salt_expr)
     end
-end
-
-"""
-Contains the hybrid system objects pertaining to a hybrid mode.
-Input:
-    flow - Vector Function of Vector state x and input u
-    transitions - optional Vector{Transition}
-Output:
-    hybrid mode - HybridMode struct containing flow and transitions
-"""
-mutable struct HybridMode
-    flow::Function
-    transitions::Union{Vector{Transition}, Nothing}
-    function HybridMode(
-        flow::Function,
-        transitions::Union{Vector{Transition}, Nothing} = nothing
-    )
-        return new(flow, transitions)
-    end
-end
-
-"""
-Constructs a Dict that maps keys to modes given pairs of keys and modes.
-Input:
-    key_mode_pairs - Vector{Tuple{String, HybridMode}}
-Output:
-    key_mode_dict - Dict{String, HybridMode}
-"""
-function generate_key_mode_dict(
-    key_mode_pairs::Vector{Tuple{String, HybridMode}}
-)::Dict{String, HybridMode}
-    key_mode_dict = Dict()
-    for (key, mode) = key_mode_pairs
-        key_mode_dict[key] = mode
-    end
-    return key_mode_dict
 end
 
 """
 Contains all hybrid system objects as well as the state and input dimensions.
 Input:
     key_mode_pairs - Vector{Tuple{String, HybridMode}}
-    nx - Int64
-    nu - Int64
+    nx - Int
+    nu - Int
 Output:
-    model - HybridSystem
+    hybrid_system - HybridSystem
 """
 struct HybridSystem
-    modes::Dict{String, HybridMode}
-    nx::Int64
-    nu::Int64
+    nx::Int
+    nu::Int
+    transitions::Dict{String, Transition}
     function HybridSystem(
-        key_mode_pairs::Vector{Tuple{String, HybridMode}},
-        nx::Int64,
-        nu::Int64
+        nx::Int,
+        nu::Int,
+        transitions::Dict{String, Transition}
     )
-        modes = generate_key_mode_dict(key_mode_pairs)
-        return new(modes, nx, nu)
+        return new(nx, nu, transitions)
     end
 end

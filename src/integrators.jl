@@ -12,7 +12,7 @@ function rk4(
     dynamics::Function,
     x::Vector,
     u::Vector,
-    h::Union{Float64, VariableRef}
+    h
 )::Vector
     k1 = dynamics(x, u)
     k2 = dynamics(x + h/2 * k1, u)

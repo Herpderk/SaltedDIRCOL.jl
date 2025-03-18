@@ -4,7 +4,7 @@ Input:
     e - Float64 representing the coefficient of restitution
     g - Float64 representing the acceleration due to gravity
 Output:
-    model - HybridSystem with "upwards" and "downwards" mode keys
+    transitions - Dict with "apex" and "impact" transitions
 """
 function bouncing_ball(
     e::Float64 = 1.0,
@@ -14,27 +14,22 @@ function bouncing_ball(
     # State space: x, y, xdot, ydot
     nx = 4
     nu = 1
-
     ballistic_flow = (x,u) -> [x[3:4]; 0.0; u[1] - g]
-    up_mode = HybridMode(ballistic_flow)
-    down_mode = HybridMode(ballistic_flow)
 
     # Define apex transition
     g_apex = x -> x[4]
     R_apex = x -> x
-    apex = Transition(up_mode, down_mode, g_apex, R_apex)
-    up_mode.transitions = [apex]
+    apex = Transition(ballistic_flow, ballistic_flow, g_apex, R_apex)
 
     # Define impact transition
     g_impact = x -> x[2]
     R_impact = x -> [x[1:3], -e * x[4]]
-    impact = Transition(down_mode, up_mode, g_impact, R_impact)
-    down_mode.transitions = [impact]
+    impact = Transition(ballistic_flow, ballistic_flow, g_impact, R_impact)
 
-    # Create hybrid system with labels
-    key_mode_pairs = [
-        ("upwards", up_mode),
-        ("downwards", down_mode)
-    ]
-    return HybridSystem(key_mode_pairs, nx, nu)
+    # Create hybrid system
+    transitions = Dict(
+        "apex" => apex,
+        "impact" => impact
+    )
+    return HybridSystem(nx, nu, transitions)
 end
