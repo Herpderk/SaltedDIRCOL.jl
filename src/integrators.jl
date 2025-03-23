@@ -1,27 +1,28 @@
 const DecisionVar = Union{Real, Vector{Real}}
 
 """
-    rk4(dynamics, x, u, h)
+    rk4(dynamics, x0, u0, x1, h)
 
-Explicit integrator using the fourth order Runge-Kutta method.
+Explicit integrator using the fourth order Runge-Kutta method. Written as an equality constraint.
 """
 function rk4(
     dynamics::Function,
-    x::DecisionVar,
-    u::DecisionVar,
+    x0::DecisionVar,
+    u0::DecisionVar,
+    x1::DecisionVar,
     h::Real
 )::DecisionVar
-    k1 = dynamics(x, u)
-    k2 = dynamics(x + h/2 * k1, u)
-    k3 = dynamics(x + h/2 * k2, u)
-    k4 = dynamics(x + h * k3, u)
-    return x + h/6 * (k1 + 2*k2 + 2*k3 + k4)
+    k1 = dynamics(x0, u0)
+    k2 = dynamics(x0 + h/2*k1, u0)
+    k3 = dynamics(x0 + h/2*k2, u0)
+    k4 = dynamics(x0 + h*k3, u0)
+    return x0 - x1 + h/6*(k1 + 2*k2 + 2*k3 + k4)
 end
 
 """
     hermite_simpson(dynamics, x0, u0, x1, h)
 
-Implicit integrator using the Hermite-Simpson method, which is accurate to third order.
+Implicit integrator using the Hermite-Simpson method.
 """
 function hermite_simpson(
     dynamics::Function,
