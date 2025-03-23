@@ -10,7 +10,7 @@ function assert_timings(
     k = 1
     for timing = sequence
         timing.k < k+2 ? error(
-            "At least 2 time steps between transitions!") : nothing
+            "Please have at least 2 time steps between transitions!") : nothing
         k = timing.k
     end
     sequence[end].k >= idx.dims.N ? error(
