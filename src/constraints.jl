@@ -98,14 +98,14 @@ function guard_touchdown(
 end
 
 """
-    guard_keepout(dims, idx, final_guard, sequence, y)
+    guard_keepout(dims, idx, terminal_guard, sequence, y)
 
-Computes guard "keep-out" residuals at every time step without touchdown. Requires an additional final guard for keep-out after the last transition.
+Computes guard "keep-out" residuals at every time step without touchdown. Requires an additional terminal guard for keep-out after the last transition.
 """
 function guard_keepout(
     dims::Dimensions,
     idx::VariableIndices,
-    final_guard::Function,
+    terminal_guard::Function,
     sequence::Vector{TransitionTiming},
     y::RealValue
 )::RealValue
@@ -127,7 +127,7 @@ function guard_keepout(
     # Evaluate final guard residuals over remaining time steps
     if k_start < dims.N
         for k = k_start : dims.N
-            c[k] = final_guard(y[idx.x[k]])
+            c[k] = terminal_guard(y[idx.x[k]])
         end
     end
     return c
