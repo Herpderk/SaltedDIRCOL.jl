@@ -8,11 +8,11 @@ function init_quadratic_cost(
     Q::Union{Matrix, Diagonal},
     R::Union{Matrix, Diagonal},
     Qf::Union{Matrix, Diagonal},
-    xrefs::Vector,
-    urefs::Vector
+    xrefs::RealValue,
+    urefs::RealValue
 )::Function
     nx, nu = idx.dims.nx, idx.dims.nu
-    Nmat = I(N-1)
+    Nmat = I(idx.dims.N - 1)
     Qs = kron(Nmat, Q)
     Rs = kron(Nmat, R)
     function quadratic_cost(y::RealValue)

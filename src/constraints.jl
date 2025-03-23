@@ -1,15 +1,20 @@
 """
-    assert_final_time(idx, sequence)
+    assert_timings(idx, sequence)
 
-Raises an error if the final time step in the transition sequence is greater than the horizon length N.
+Raises an error if a transition time step is not at least 2 more than the first time step or previous transition time step. Also raises an error if the final transition time step is >= the horizon length N.
 """
-function assert_final_time(
+function assert_timings(
     idx::VariableIndices,
     sequence::Vector{TransitionTiming}
 )::Nothing
-    if sequence[end].k > idx.dims.N
-        error("Final time step should be >= the horizon length N!")
+    k = 1
+    for timing = sequence
+        timing.k < k+2 ? error(
+            "At least 2 time steps between transitions!") : nothing
+        k = timing.k
     end
+    sequence[end].k >= idx.dims.N ? error(
+        "Final transition time step should be < horizon length N!") : nothing
 end
 
 """
@@ -21,8 +26,8 @@ function get_variables(
     idx::VariableIndices,
     k::Int,
     y::RealValue,
-    h::Union{Nothing, RealValue}
-)::Tuple{RealValue}
+    h::Union{Nothing, Real}
+)::Tuple{RealValue, RealValue, RealValue, Union{Nothing, Real}}
     x0 = y[idx.x[k]]
     u0 = y[idx.u[k]]
     x1 = y[idx.x[k+1]]
@@ -42,18 +47,18 @@ function dynamics_defect(
     y::RealValue,
     h::Union{Nothing, Real} = nothing
 )::RealValue
-    assert_final_time(idx, sequence)
+    assert_timings(idx, sequence)
 
     # Init defect residuals and time step counter
     c = [zeros(idx.dims.nx) for k = 1:idx.dims.N-1]
-    k_start = 0
+    k_start = 1
 
     # Iterate over each hybrid mode and time step
     for timing = sequence
         for k = k_start : timing.k
             # Get states, inputs and time step duration
             x0, u0, x1, hval = get_variables(idx, k, y, h)
-            if k == timing.k1
+            if k == timing.k
                 # Assume reset occurs at start of time step and integrate after
                 xJ = timing.transition.reset(x0)
                 c[k] = integrator(timing.transition.flow_J, xJ, u0, x1, hval)
@@ -86,7 +91,7 @@ function guard_touchdown(
     sequence::Vector{TransitionTiming},
     y::RealValue
 )::RealValue
-    assert_final_time(idx, sequence)
+    assert_timings(idx, sequence)
     c = zeros(length(sequence))
 
     # Evaluate touchdown residuals right before transitions
@@ -107,25 +112,28 @@ function guard_keepout(
     sequence::Vector{TransitionTiming},
     y::RealValue
 )::RealValue
-    assert_final_time(idx, sequence)
+    assert_timings(idx, sequence)
 
     # Init keepout residuals
     c = zeros(idx.dims.N - length(sequence))
-    k_start = 0
+    k_start = 1
+    i = 1
 
     # Iterate over each hybrid mode and time step
     for timing = sequence
         for k = k_start : timing.k-2
-            c[k] = timing.transition.guard(y[idx.x[k]])
+            c[i] = timing.transition.guard(y[idx.x[k]])
+            i += 1
         end
         # Update starting time step; skip time step with touchdown constraint
         k_start = timing.k
     end
 
-    # Evaluate final guard residuals over remaining time steps
+    # Evaluate terminal guard residuals over remaining time steps
     if k_start < idx.dims.N
         for k = k_start : idx.dims.N
-            c[k] = terminal_guard(y[idx.x[k]])
+            c[i] = terminal_guard(y[idx.x[k]])
+            i += 1
         end
     end
     return c

@@ -1,5 +1,3 @@
-const RealValue = Union{Real, Vector{Real}}
-
 """
     rk4(dynamics, x0, u0, x1, h)
 

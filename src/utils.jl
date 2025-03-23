@@ -1,3 +1,5 @@
+const RealValue = Union{Real, Vector}
+
 """
     Dimensions(N, nx, nu, nh)
 
@@ -34,7 +36,7 @@ function get_indices(
     Δstop::Int
 )::Vector{UnitRange{Int}}
     ny_per_step = dims.nx + dims.nu + dims.nh
-    return [(1+Δstart : nx+Δstop) .+ (k-1)*(ny_per_step) for k = 1:N]
+    return [(1+Δstart : dims.nx+Δstop) .+ (k-1)*(ny_per_step) for k = 1:dims.N]
 end
 
 """
