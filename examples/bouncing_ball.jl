@@ -1,7 +1,5 @@
 using Pkg; Pkg.activate(joinpath(@__DIR__, ".."))
 using LinearAlgebra
-using Nonconvex
-Nonconvex.@load NLopt
 using SaltedDIRCOL
 
 # Define horizon parameters
@@ -12,11 +10,14 @@ N = 100
 hybrid_sys = SaltedDIRCOL.bouncing_ball()
 nx = hybrid_sys.nx
 nu = hybrid_sys.nu
+nxs = N*nx
+nus = (N-1) * nus
+ny = nxs + nus
 
 # Define reference trajectory and initial conditions
 xgoal = [0.5; 0.2; 0.0; 0.0]
 xrefs = repeat(xgoal, N)
-urefs = zeros((N-1) * nu)
+urefs = zeros(nus)
 xic = [0.0; 0.1; 1.0; 0.0]
 
 # Init objective function
@@ -25,8 +26,7 @@ R = 1e0 * I(nu)
 Qf = 1e6 * Q
 J = SaltedDIRCOL.init_quadratic_cost_function(N, xrefs, urefs, Q, R, Qf)
 
-# Init optimization model and decision variables
-ny = N*nx + (N-1)*nu
+# Init optimization model and decision variable
 model = Model(J)
 addvar!(model, -Inf*ones(ny), Inf*ones(ny))
 
@@ -50,10 +50,10 @@ for k = 1 : N-1
         end
     end
 
-    # Index current state, input, and next state
+    # Index current state, next state, and current input
     x0_idx = 1 + (k-1)*nx : k*nx
-    u0_idx = 1 + (k-1)*nu : k*nu
     x1_idx = 1 + k*nx : (k+1)*nx
+    u0_idx = 1 + nxs + (k-1)*nu : nxs + k*nu
 
     # Choose constraints based on current mode
     if k != N && k == transition_time
