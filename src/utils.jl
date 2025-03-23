@@ -38,7 +38,7 @@ function get_indices(
 end
 
 """
-    VariableIndices
+    VariableIndices(dims)
 
 Contains ranges of indices for getting instances of x, u, or h given the [x, u, h] order of decision variables.
 """
