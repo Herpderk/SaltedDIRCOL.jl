@@ -43,13 +43,17 @@ end
 Contains ranges of indices for getting instances of x, u, or h given the [x, u, h] order of decision variables.
 """
 struct VariableIndices
+    dims::Dimensions
     x::Vector{UnitRange{Int}}
     u::Vector{UnitRange{Int}}
     h::Union{nothing, Vector{UnitRange{Int}}}
     function VariableIndices(
-        dims::Dimensions
+        N::Int,
+        nx::Int,
+        nu::Int,
+        nh::Int
     )
-        nx, nu, nh = dims.nx, dims.nu, dims.nh
+        dims = Dimensions(N, nx, nu, nh)
         x_idx = get_indices(dims, 0, 0)
         u_idx = get_indices(dims, nx, nu)
         if nh == 1
@@ -57,7 +61,7 @@ struct VariableIndices
         elseif nh == 0
             h_idx = nothing
         end
-        return new(x_idx, u_idx, h_idx)
+        return new(dims, x_idx, u_idx, h_idx)
     end
 end
 

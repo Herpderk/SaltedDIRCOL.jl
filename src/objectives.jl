@@ -4,7 +4,6 @@
 Returns a quadratic cost function given a set of cost matrices.
 """
 function init_quadratic_cost(
-    dims::Dimensions,
     idx::VariableIndices,
     Q::Union{Matrix, Diagonal},
     R::Union{Matrix, Diagonal},
@@ -12,7 +11,7 @@ function init_quadratic_cost(
     xrefs::Vector,
     urefs::Vector
 )::Function
-    nx, nu = dims.nx, dims.nu
+    nx, nu = idx.dims.nx, idx.dims.nu
     Nmat = I(N-1)
     Qs = kron(Nmat, Q)
     Rs = kron(Nmat, R)
