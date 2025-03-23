@@ -6,7 +6,7 @@ Raises an error if the final time step in the transition sequence is greater tha
 function assert_final_time(
     idx::VariableIndices,
     sequence::Vector{TransitionTiming}
-)::nothing
+)::Nothing
     if sequence[end].k > idx.dims.N
         error("Final time step should be >= the horizon length N!")
     end
@@ -21,7 +21,7 @@ function get_variables(
     idx::VariableIndices,
     k::Int,
     y::RealValue,
-    h::Union{nothing, RealValue}
+    h::Union{Nothing, RealValue}
 )::Tuple{RealValue}
     x0 = y[idx.x[k]]
     u0 = y[idx.u[k]]
@@ -40,7 +40,7 @@ function dynamics_defect(
     integrator::Function,
     sequence::Vector{TransitionTiming},
     y::RealValue,
-    h::Union{nothing, Real} = nothing
+    h::Union{Nothing, Real} = nothing
 )::RealValue
     assert_final_time(idx, sequence)
 
@@ -53,12 +53,12 @@ function dynamics_defect(
         for k = k_start : timing.k
             # Get states, inputs and time step duration
             x0, u0, x1, hval = get_variables(idx, k, y, h)
-            # Evaluate defects; assume reset occurs at the start of time steps
-            xJ = k == timing.k ? timing.transition.reset(x0) : x0
             if k == timing.k1
+                # Assume reset occurs at start of time step and integrate after
                 xJ = timing.transition.reset(x0)
                 c[k] = integrator(timing.transition.flow_J, xJ, u0, x1, hval)
             else
+                # Integrate smooth dynamics
                 c[k] = integrator(timing.transition.flow_I, x0, u0, x1, hval)
             end
         end

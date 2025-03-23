@@ -46,7 +46,7 @@ struct VariableIndices
     dims::Dimensions
     x::Vector{UnitRange{Int}}
     u::Vector{UnitRange{Int}}
-    h::Union{nothing, Vector{UnitRange{Int}}}
+    h::Union{Nothing, Vector{UnitRange{Int}}}
     function VariableIndices(
         N::Int,
         nx::Int,
