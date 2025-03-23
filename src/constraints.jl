@@ -44,6 +44,7 @@ function dynamics_defect(
     h::Union{nothing, Real} = nothing
 )::RealValue
     assert_final_time(dims, sequence)
+
     # Init defect residuals and time step counter
     c = [zeros(dims.nx) for k = 1:dims.N-1]
     k_start = 0
@@ -125,7 +126,7 @@ function guard_keepout(
 
     # Evaluate final guard residuals over remaining time steps
     if k_start < dims.N
-        for k = k_start : dims.N-1
+        for k = k_start : dims.N
             c[k] = final_guard(y[idx.x[k]])
         end
     end
