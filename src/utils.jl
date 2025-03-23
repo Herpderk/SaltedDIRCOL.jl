@@ -1,4 +1,7 @@
 """
+    Dimensions(N, nx, nu, nh)
+
+Contains dimensions corresponding to the number of horizon time steps, states, inputs, time, and total decision variables. Time with 0 dimensions implies that the time step durations are fixed.
 """
 struct Dimensions
     N::Int
@@ -12,12 +15,18 @@ struct Dimensions
         nu::Int,
         nh::Int
     )
+        if !(nh in (0, 1))
+            error("Dimension of h must be 0 or !")
+        end
         ny = N*nx + (N-1)*(nu + nh)
         return new(N, nx, nu, nh, ny)
     end
 end
 
 """
+    get_indices(dims, Δstart, Δstop)
+
+Returns a range of indices given the [x, u, h] order of decision variables.
 """
 function get_indices(
     dims::Dimensions,
@@ -29,6 +38,9 @@ function get_indices(
 end
 
 """
+    VariableIndices
+
+Contains ranges of indices for getting instances of x, u, or h given the [x, u, h] order of decision variables.
 """
 struct VariableIndices
     x::Vector{UnitRange{Int}}
@@ -44,8 +56,6 @@ struct VariableIndices
             h_idx = get_indices(dims, nx+nu, nx+nu+nh)
         elseif nh == 0
             h_idx = nothing
-        else
-            error("dimensions of t cannot be greater than 1!")
         end
         return new(x_idx, u_idx, h_idx)
     end

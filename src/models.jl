@@ -1,10 +1,7 @@
 """
-Models the modes and transitions of a 2D elastic bouncing ball system.
-Input:
-    e - Float64 representing the coefficient of restitution
-    g - Float64 representing the acceleration due to gravity
-Output:
-    transitions - Dict with "apex" and "impact" transitions
+    bouncing_ball(e=1.0, g=9.81)
+
+Returns the hybrid system model containing the modes and transitions of a planar (in)elastic bouncing ball.
 """
 function bouncing_ball(
     e::Float64 = 1.0,

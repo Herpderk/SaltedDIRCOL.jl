@@ -1,16 +1,11 @@
 """
-Derives the function for computing the saltation matrix for a given transition.
-Input:
-    prev_flow - Vector Function of Vector state x
-    next_flow - Vector Function of Vector state x
-    guard - scalar Function of Vector state x
-    reset - Vector Function of Vector state x
-Output:
-    saltation_expr - Matrix Function of Vector state x and input u
+    derive_saltation_matrix(flow_I, flow_J, guard, reset)
+
+Derives the function for computing the saltation matrix for a given hybrid transition.
 """
 function derive_saltation_matrix(
-    prev_flow::Function,
-    next_flow::Function,
+    flow_I::Function,
+    flow_J::Function,
     guard::Function,
     reset::Function
 )::Function
@@ -18,21 +13,15 @@ function derive_saltation_matrix(
     R_jac = x -> FD.jacobian(reset, x)
     return (x,u) -> (
         R_jac(x)
-        + (next_flow(reset(x),u) - R_jac(x) * prev_flow(x,u)) * g_grad(x)'
-        / (g_grad(x)' * prev_flow(x,u))
+        + (flow_J(reset(x),u) - R_jac(x) * flow_I(x,u)) * g_grad(x)'
+        / (g_grad(x)' * flow_I(x,u))
     )
 end
 
 """
-Contains the hybrid system objects pertaining to a hybrid transition.
-Input:
-    prev_mode - HybridMode
-    next_mode - HybridMode
-    guard - scalar Function of Vector state x
-    reset - Vector Function of Vector state x
-Output:
-    transition - Transition struct containing prev_mode, next_mode, guard,
-                 reset, and saltation matrix expression
+    Transition(flow_I, flow_J, guard, reset)
+
+Contains all hybrid system objects pertaining to a hybrid transition.
 """
 struct Transition
     flow_I::Function
@@ -52,23 +41,22 @@ struct Transition
 end
 
 """
-Contains all hybrid system objects as well as the state and input dimensions.
-Input:
-    key_mode_pairs - Vector{Tuple{String, HybridMode}}
-    nx - Int
-    nu - Int
-Output:
-    hybrid_system - HybridSystem
+    TransitionTiming(k, transition)
+
+Contains the time step for which the given hybrid transition occurs at the beginning of.
+"""
+struct TransitionTiming
+    k::Int
+    transition::Transition
+end
+
+"""
+    HybridSystem(nx, nu, transitions)
+
+Contains all hybrid system objects in addition to the system's state and input dimensions.
 """
 struct HybridSystem
     nx::Int
     nu::Int
     transitions::Dict{String, Transition}
-    function HybridSystem(
-        nx::Int,
-        nu::Int,
-        transitions::Dict{String, Transition}
-    )
-        return new(nx, nu, transitions)
-    end
 end

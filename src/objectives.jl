@@ -1,26 +1,28 @@
 """
+    init_quadratic_cost(idx, dims, Q, R, Qf, xrefs, urefs)
+
+Returns a quadratic cost function given a set of cost matrices.
 """
-function init_quadratic_cost_function(
-    N::Int,
-    xrefs::Vector,
-    urefs::Vector,
+function init_quadratic_cost(
+    dims::Dimensions,
+    idx::VariableIndices,
     Q::Union{Matrix, Diagonal},
     R::Union{Matrix, Diagonal},
-    Qf::Union{Matrix, Diagonal}
+    Qf::Union{Matrix, Diagonal},
+    xrefs::Vector,
+    urefs::Vector
 )::Function
+    nx, nu = dims.nx, dims.nu
     Nmat = I(N-1)
     Qs = kron(Nmat, Q)
     Rs = kron(Nmat, R)
-    nxs = length(xrefs)
-    nx = Int(nxs / N)
-    ny = nxs + length(urefs)
-    function cost_function(y::Vector)
-        xs = y[1 : nxs]
-        xs_err = xs[1 : end - nx]
-        xf_err = xs[end + 1 - nx : end]
-        us = y[1+nxs : ny]
-        us_err = us - urefs
+    function quadratic_cost(y::RealValue)
+        xs = vcat([y[i] for i = idx.x]...)
+        us = vcat([y[i] for i = idx.u]...)
+        xs_err = xs[1 : end-nx] - xrefs[1 : end-nx]
+        xf_err = xs[end-nx+1 : end] - xrefs[end-nx+1 : end]
+        us_err = us[1 : end-nu] - urefs[1 : end-nu]
         return xs_err'*Qs*xs_err + us_err'*Rs*us_err + xf_err'*Qf*xf_err
     end
-    return cost_function
+    return quadratic_cost
 end
