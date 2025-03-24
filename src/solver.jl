@@ -38,10 +38,10 @@ struct SolverCallbacks
         params::ProblemParameters,
         sequence::Vector{TransitionTiming},
         term_guard::Function,
-        xrefs::RealValue,
-        urefs::RealValue,
-        xic::RealValue,
-        xgc::Union{Nothing, Real} = nothing
+        xrefs::Value,
+        urefs::Value,
+        xic::Value,
+        xgc::Union{Nothing, Value} = nothing
     )::SolverCallbacks
         # Define objective
         f = y -> params.objective(xrefs, urefs, y)

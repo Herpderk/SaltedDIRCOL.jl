@@ -25,9 +25,9 @@ Returns a tuple of (decision) variables for computing dynamics defect residuals 
 function get_primals(
     params::ProblemParameters,
     k::Int,
-    y::RealValue,
+    y::Value,
     Δt::Union{Nothing, Real}
-)::Tuple{RealValue, RealValue, RealValue, Union{Nothing, Real}}
+)::Tuple{Value, Value, Value, Union{Nothing, Real}}
     x0 = y[params.idx.x[k]]
     u0 = y[params.idx.u[k]]
     x1 = y[params.idx.x[k+1]]
@@ -43,9 +43,9 @@ Computes dynamics defect residuals for a given integration scheme and transition
 function dynamics_defect(
     params::ProblemParameters,
     sequence::Vector{TransitionTiming},
-    y::RealValue,
+    y::Value,
     Δt::Union{Nothing, Real} = nothing
-)::RealValue
+)::Value
     assert_timings(params, sequence)
 
     # Init defect residuals and time step counter
@@ -89,8 +89,8 @@ function guard_keepout(
     params::ProblemParameters,
     sequence::Vector{TransitionTiming},
     term_guard::Function,
-    y::RealValue
-)::RealValue
+    y::Value
+)::Value
     assert_timings(params, sequence)
 
     # Init keepout residuals
@@ -127,8 +127,8 @@ Computes guard "touchdown" residuals at time steps right before transitions.
 function guard_touchdown(
     params::ProblemParameters,
     sequence::Vector{TransitionTiming},
-    y::RealValue
-)::RealValue
+    y::Value
+)::Value
     assert_timings(params, sequence)
     c = zeros(eltype(y), length(sequence))
     for (i, timing) in enumerate(sequence)
@@ -144,9 +144,9 @@ Computes initial condition residuals.
 """
 function initial_condition(
     params::ProblemParameters,
-    xic::RealValue,
-    y::RealValue
-)::RealValue
+    xic::Value,
+    y::Value
+)::Value
     return y[params.idx.x[1]] - xic
 end
 
@@ -157,8 +157,8 @@ Computes goal condition residuals.
 """
 function goal_condition(
     params::ProblemParameters,
-    xg::RealValue,
-    y::RealValue
-)::RealValue
+    xg::Value,
+    y::Value
+)::Value
     return y[params.idx.x[params.dims.N]] - xg
 end
