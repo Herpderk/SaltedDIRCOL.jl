@@ -29,13 +29,16 @@ end
 """
 struct SolverCallbacks
     f::Function
+    Lc::Function
     g::Function
     h::Function
     c::Function
-    fgrad::Function
-    gjac::Function
-    hjac::Function
-    cjac::Function
+    f_grad::Function
+    g_jac::Function
+    h_jac::Function
+    c_jac::Function
+    f_hess::Function
+    Lc_hess::Function
     function SolverCallbacks(
         params::ProblemParameters,
         sequence::Vector{TransitionTiming},
@@ -66,13 +69,29 @@ struct SolverCallbacks
         # Compose all constraints
         c = y -> [g(y); h(y)]
 
-        # TODO: Define Lagrangian function
+        # Define constraint component of Lagrangian
+        Lc = (y, λ) -> λ' * c(y)
 
         # Autodiff all callbacks
-        fgrad = y -> ForwardDiff.gradient(f, y)
+        f_grad = y -> ForwardDiff.gradient(f, y)
         jacs = [y -> ForwardDiff.jacobian(func, y) for func = (g, h, c)]
-        return new(f, g, h, c, fgrad, jacs...)
+        f_hess = y -> ForwardDiff.hessian(f, y)
+        Lc_hess = (y, λ) -> ForwardDiff.hessian(dy -> Lc(dy, λ), y)
+        return new(
+            f, Lc, g, h, c,
+            f_grad, jacs...,
+            f_hess, Lc_hess
+        )
     end
+end
+
+"""
+"""
+function get_sparsity_pattern(
+    A::Matrix
+)::Tuple{Vector{Int}, Vector{Int}}
+    rows, cols, vals = findnz(sparse(A))
+    return rows, cols
 end
 
 """
@@ -84,17 +103,22 @@ struct IpoptCallbacks
     eval_jac_g::Function
     eval_h::Function
     function IpoptCallbacks(
-        callbacks::SolverCallbacks
+        params::ProblemParameters,
+        cb::SolverCallbacks
     )::IpoptCallbacks
-        # Get constraint jacobian sparsity pattern
-        sp_cjac = sparse(cjac(Inf * ones(params.dims.ny)))
-        crows, ccols, cvals = findnz(sp_cjac)
+        # Get constraint jacobian and Lagrangian hessian sparsity patterns
+        yinf = Inf * ones(params.dims.ny)
+        λinf = Inf * ones(length(cb.c(yinf)))
+        c_rows, c_cols = get_sparsity_pattern(cb.c_jac(yinf))
+        L_rows, L_cols = get_sparsity_pattern(
+            cb.f_hess(yinf) + cb.Lc_hess(yinf, λinf)
+        )
 
         # Objective evaluation
         function eval_f(
             x::Vector{Float64}
         )::Float64
-            return callbacks.f(x)
+            return cb.f(x)
         end
 
         # Constraint evaluation
@@ -102,7 +126,7 @@ struct IpoptCallbacks
             x::Vector{Float64},
             g::Vector{Float64}
         )::Nothing
-            g = callbacks.c(x)
+            g = cb.c(x)
         end
 
         # Objective gradient
@@ -110,7 +134,7 @@ struct IpoptCallbacks
             x::Vector{Float64},
             grad_f::Vector{Float64}
         )::Nothing
-            grad_f = callbacks.fgrad(x)
+            grad_f = cb.f_grad(x)
         end
 
         # Constraint jacobian
@@ -121,10 +145,10 @@ struct IpoptCallbacks
             values::Union{Nothing, Vector{Float64}}
         )::Nothing
             if isnothing(values)
-                rows = crows
-                cols = ccols
+                rows = c_rows
+                cols = c_cols
             else
-                values = sparse(callbacks.cjac(x)).nzval
+                values = sparse(cb.c_jac(x)).nzval
             end
         end
 
@@ -137,6 +161,13 @@ struct IpoptCallbacks
             lambda::Float64,
             values::Union{Nothing, Vector{Float64}}
         )::Nothing
+            if isnothing(values)
+                rows = L_rows
+                cols = L_cols
+            else
+                Lhess = obj_factor * cb.f_hess(x) + cb.Lc_hess(x, lambda)
+                values = sparse(Lhess).nzval
+            end
         end
         return new(eval_f, eval_g, eval_grad_f, eval_jac_g, eval_h)
     end

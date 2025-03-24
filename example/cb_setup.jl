@@ -13,7 +13,7 @@ R = 1e0 * I(system.nu)
 Qf = 1e6 * Q
 
 # Define horizon parameters
-N = 100
+N = 50
 Δt = 0.01
 
 # Define trajopt problem parameters
@@ -25,9 +25,9 @@ params = SaltedDIRCOL.ProblemParameters(
 apex = system.transitions["apex"]
 impact = system.transitions["impact"]
 sequence = [
-    SaltedDIRCOL.TransitionTiming(25, apex),
-    SaltedDIRCOL.TransitionTiming(50, impact),
-    SaltedDIRCOL.TransitionTiming(75, apex),
+    SaltedDIRCOL.TransitionTiming(10, apex),
+    SaltedDIRCOL.TransitionTiming(20, impact),
+    SaltedDIRCOL.TransitionTiming(30, apex),
     SaltedDIRCOL.TransitionTiming(N-1, impact),
 ]
 term_guard = impact.guard
@@ -38,16 +38,13 @@ xgc = [0.5; 0.2; 0.0; 0.0]
 xrefs = repeat(xgc, N)
 urefs = zeros((N-1) * system.nu)
 
-# Define solver callback functions and gradients/jacobians
+# Define solver callbacks
 callbacks = SaltedDIRCOL.SolverCallbacks(
     params, sequence, term_guard, xrefs, urefs, xic
 )
+ipopt_cb = SaltedDIRCOL.IpoptCallbacks(params, callbacks)
 
-# Get dense constraint jacobian
-cjac = callbacks.cjac(Inf * ones(params.dims.ny))
-@show length(cjac)
-
-# Get sparsity pattern
-sparse_jac = sparse(cjac)
-rows, cols, nzval = findnz(sparse_jac)
-@show length(nzval)
+# Test callbacks
+ytest = ones(params.dims.ny)
+λtest = ones(length(callbacks.c(ytest)))
+@time callbacks.Lc_hess(ytest, λtest)
