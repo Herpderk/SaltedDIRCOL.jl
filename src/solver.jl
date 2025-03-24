@@ -66,14 +66,12 @@ struct SolverCallbacks
         # Compose all constraints
         c = y -> [g(y); h(y)]
 
-        # TODO: Add Lagrangian function
+        # TODO: Define Lagrangian function
 
         # Autodiff all callbacks
         fgrad = y -> ForwardDiff.gradient(f, y)
-        gjac = y -> ForwardDiff.jacobian(g, y)
-        hjac = y -> ForwardDiff.jacobian(h, y)
-        cjac = y -> ForwardDiff.jacobian(c, y)
-        return new(f, g, h, c, fgrad, gjac, hjac, cjac)
+        jacs = [y -> ForwardDiff.jacobian(func, y) for func = (g, h, c)]
+        return new(f, g, h, c, fgrad, jacs...)
     end
 end
 
