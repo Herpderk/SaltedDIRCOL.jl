@@ -1,6 +1,7 @@
 module SaltedDIRCOL
 
 using LinearAlgebra
+using SparseArrays
 using ForwardDiff
 using Ipopt
 

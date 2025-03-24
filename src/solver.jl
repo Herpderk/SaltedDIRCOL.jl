@@ -31,9 +31,11 @@ struct SolverCallbacks
     f::Function
     g::Function
     h::Function
+    c::Function
     fgrad::Function
     gjac::Function
     hjac::Function
+    cjac::Function
     function SolverCallbacks(
         params::ProblemParameters,
         sequence::Vector{TransitionTiming},
@@ -61,10 +63,83 @@ struct SolverCallbacks
             h = y -> [ic(y); defect(y); touchdown(y); gc(y)]
         end
 
+        # Compose all constraints
+        c = y -> [g(y); h(y)]
+
+        # TODO: Add Lagrangian function
+
         # Autodiff all callbacks
         fgrad = y -> ForwardDiff.gradient(f, y)
         gjac = y -> ForwardDiff.jacobian(g, y)
         hjac = y -> ForwardDiff.jacobian(h, y)
-        return new(f, g, h,fgrad, gjac, hjac)
+        cjac = y -> ForwardDiff.jacobian(c, y)
+        return new(f, g, h, c, fgrad, gjac, hjac, cjac)
+    end
+end
+
+"""
+"""
+struct IpoptCallbacks
+    eval_f::Function
+    eval_g::Function
+    eval_grad_f::Function
+    eval_jac_g::Function
+    eval_h::Function
+    function IpoptCallbacks(
+        callbacks::SolverCallbacks
+    )::IpoptCallbacks
+        # Get constraint jacobian sparsity pattern
+        sp_cjac = sparse(cjac(Inf * ones(params.dims.ny)))
+        crows, ccols, cvals = findnz(sp_cjac)
+
+        # Objective evaluation
+        function eval_f(
+            x::Vector{Float64}
+        )::Float64
+            return callbacks.f(x)
+        end
+
+        # Constraint evaluation
+        function eval_g(
+            x::Vector{Float64},
+            g::Vector{Float64}
+        )::Nothing
+            g = callbacks.c(x)
+        end
+
+        # Objective gradient
+        function eval_grad_f(
+            x::Vector{Float64},
+            grad_f::Vector{Float64}
+        )::Nothing
+            grad_f = callbacks.fgrad(x)
+        end
+
+        # Constraint jacobian
+        function eval_jac_g(
+            x::Vector{Float64},
+            rows::Vector{Cint},
+            cols::Vector{Cint},
+            values::Union{Nothing, Vector{Float64}}
+        )::Nothing
+            if isnothing(values)
+                rows = crows
+                cols = ccols
+            else
+                values = sparse(callbacks.cjac(x)).nzval
+            end
+        end
+
+        # Lagrangian hessian
+        function eval_h(
+            x::Vector{Float64},
+            rows::Vector{Cint},
+            cols::Vector{Cint},
+            obj_factor::Float64,
+            lambda::Float64,
+            values::Union{Nothing, Vector{Float64}}
+        )::Nothing
+        end
+        return new(eval_f, eval_g, eval_grad_f, eval_jac_g, eval_h)
     end
 end
