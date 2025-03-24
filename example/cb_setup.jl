@@ -1,5 +1,6 @@
 using Pkg; Pkg.activate(joinpath(@__DIR__, ".."))
 using LinearAlgebra
+using SparseArrays
 using Revise
 using SaltedDIRCOL
 
@@ -42,6 +43,11 @@ callbacks = SaltedDIRCOL.SolverCallbacks(
     params, sequence, term_guard, xrefs, urefs, xic
 )
 
-@time size(callbacks.fgrad(zeros(params.dims.ny)))
-@time size(callbacks.gjac(zeros(params.dims.ny)))
-@time size(callbacks.hjac(zeros(params.dims.ny)))
+# Get dense constraint jacobian
+cjac = callbacks.cjac(Inf * ones(params.dims.ny))
+@show length(cjac)
+
+# Get sparsity pattern
+sparse_jac = sparse(cjac)
+rows, cols, nzval = findnz(sparse_jac)
+@show length(nzval)
