@@ -1,5 +1,5 @@
 """
-    assert_timings(idx, sequence)
+    assert_timings(params, sequence)
 
 Raises an error if a transition time step is not at least 2 more than the first time step or previous transition time step. Also raises an error if the final transition time step is >= the horizon length N.
 """
@@ -18,7 +18,7 @@ function assert_timings(
 end
 
 """
-    get_primals(params, k, y, h=nothing)
+    get_primals(params, k, y, Δt)
 
 Returns a tuple of (decision) variables for computing dynamics defect residuals for a given time step.
 """
@@ -26,17 +26,17 @@ function get_primals(
     params::ProblemParameters,
     k::Int,
     y::RealValue,
-    h::Union{Nothing, Real}
+    Δt::Union{Nothing, Real}
 )::Tuple{RealValue, RealValue, RealValue, Union{Nothing, Real}}
     x0 = y[params.idx.x[k]]
     u0 = y[params.idx.u[k]]
     x1 = y[params.idx.x[k+1]]
-    hval = isnothing(h) ? y[params.idx.h[k]] : h
-    return x0, u0, x1, hval
+    Δt = isnothing(Δt) ? y[params.idx.Δt[k]] : Δt
+    return x0, u0, x1, Δt
 end
 
 """
-    dynamics_defect(idx, integrator, sequence, y, h=nothing)
+    dynamics_defect(params, integrator, sequence, y, Δt=nothing)
 
 Computes dynamics defect residuals for a given integration scheme and transition sequence.
 """
@@ -44,8 +44,8 @@ function dynamics_defect(
     params::ProblemParameters,
     sequence::Vector{TransitionTiming},
     y::RealValue,
-    h::Union{Nothing, Real} = nothing
-)#::RealValue
+    Δt::Union{Nothing, Real} = nothing
+)::RealValue
     assert_timings(params, sequence)
 
     # Init defect residuals and time step counter
@@ -56,7 +56,7 @@ function dynamics_defect(
     for timing = sequence
         for k = k_start : timing.k
             # Get states, inputs and time step duration
-            x0, u0, x1, hval = get_primals(params, k, y, h)
+            x0, u0, x1, hval = get_primals(params, k, y, Δt)
             if k == timing.k
                 # Assume reset occurs at start of time step and integrate after
                 xJ = timing.transition.reset(x0)
@@ -75,7 +75,7 @@ function dynamics_defect(
     # Integrate over remaining time steps
     if k_start < params.dims.N
         for k = k_start : params.dims.N-1
-            x0, u0, x1, hval = get_primals(params, k, y, h)
+            x0, u0, x1, hval = get_primals(params, k, y, Δt)
             c[k] = params.integrator(
                 sequence[end].transition.flow_J, x0, u0, x1, hval)
         end
@@ -93,7 +93,7 @@ function guard_keepout(
     sequence::Vector{TransitionTiming},
     term_guard::Function,
     y::RealValue
-)#::RealValue
+)::RealValue
     assert_timings(params, sequence)
 
     # Init keepout residuals
@@ -131,7 +131,7 @@ function guard_touchdown(
     params::ProblemParameters,
     sequence::Vector{TransitionTiming},
     y::RealValue
-)#::RealValue
+)::RealValue
     assert_timings(params, sequence)
     return [
         timing.transition.guard(y[params.idx.x[timing.k-1]])
@@ -140,21 +140,27 @@ function guard_touchdown(
 end
 
 """
+    initial_condition(params, xic, y)
+
+Computes initial condition residuals.
 """
 function initial_condition(
     params::ProblemParameters,
     xic::RealValue,
     y::RealValue
-)#::RealValue
+)::RealValue
     return y[params.idx.x[1]] - xic
 end
 
 """
+    goal_condition(params, xg, y)
+
+Computes goal condition residuals.
 """
 function goal_condition(
     params::ProblemParameters,
     xg::RealValue,
     y::RealValue
-)#::RealValue
+)::RealValue
     return y[params.idx.x[params.dims.N]] - xg
 end

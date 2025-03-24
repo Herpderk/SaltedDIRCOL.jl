@@ -17,8 +17,8 @@ struct ProblemParameters
     )::ProblemParameters
         nx = system.nx
         nu = system.nu
-        nh = isnothing(Δt) ? 1 : 0
-        dims = PrimalDimensions(N, nx, nu, nh)
+        nt = isnothing(Δt) ? 1 : 0
+        dims = PrimalDimensions(N, nx, nu, nt)
         idx = PrimalIndices(dims)
         obj = init_quadratic_cost(dims, idx, Q, R, Qf)
         return new(integrator, obj, dims, idx, Δt)
@@ -40,7 +40,7 @@ struct SolverCallbacks
         urefs::RealValue,
         xic::RealValue,
         xgc::Union{Nothing, Real} = nothing,
-        custom_jac_h::Bool = false
+        custom_h_jac::Bool = false
     )::SolverCallbacks
         # Define objective callback
         f = y -> params.objective(xrefs, urefs, y)

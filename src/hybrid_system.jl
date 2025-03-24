@@ -1,7 +1,7 @@
 """
     derive_saltation_matrix(flow_I, flow_J, guard, reset)
 
-Derives the function for computing the saltation matrix for a given hybrid transition.
+Derives the saltation matrix function for a given hybrid transition.
 """
 function derive_saltation_matrix(
     flow_I::Function,
@@ -11,7 +11,7 @@ function derive_saltation_matrix(
 )::Function
     g_grad = x -> FD.gradient(guard, x)
     R_jac = x -> FD.jacobian(reset, x)
-    salt_mat(x, u) = (
+    salt_mat = (x, u) -> (
         R_jac(x)
         + (flow_J(reset(x),u) - R_jac(x) * flow_I(x,u)) * g_grad(x)'
         / (g_grad(x)' * flow_I(x,u))
