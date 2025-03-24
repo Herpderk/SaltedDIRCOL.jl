@@ -1,26 +1,32 @@
 """
-    init_quadratic_cost(idx, dims, Q, R, Qf, xrefs, urefs)
+    init_quadratic_cost(dims, idx, Q, R, Qf, xrefs, urefs)
 
 Returns a quadratic cost function given a set of cost matrices.
 """
 function init_quadratic_cost(
-    idx::VariableIndices,
+    dims::PrimalDimensions,
+    idx::PrimalIndices,
     Q::Union{Matrix, Diagonal},
     R::Union{Matrix, Diagonal},
-    Qf::Union{Matrix, Diagonal},
-    xrefs::RealValue,
-    urefs::RealValue
+    Qf::Union{Matrix, Diagonal}
 )::Function
-    nx, nu = idx.dims.nx, idx.dims.nu
-    Nmat = I(idx.dims.N - 1)
+    Nmat = I(dims.N - 1)
     Qs = kron(Nmat, Q)
     Rs = kron(Nmat, R)
-    function quadratic_cost(y::RealValue)
-        xs = vcat([y[i] for i = idx.x]...)
+    function quadratic_cost(
+        xrefs::RealValue,
+        urefs::RealValue,
+        y::RealValue
+    )::Real
+        # Get stage state errors
+        xs = vcat([y[i] for i = idx.x[1 : end-1]]...)
+        xs_err = xs - xrefs[1 : end-dims.nx]
+        # Get terminal state error
+        xf = y[idx.x[end]]
+        xf_err = xf - xrefs[end-dims.nx+1 : end]
+        # Get stage input errors
         us = vcat([y[i] for i = idx.u]...)
-        xs_err = xs[1 : end-nx] - xrefs[1 : end-nx]
-        xf_err = xs[end-nx+1 : end] - xrefs[end-nx+1 : end]
-        us_err = us[1 : end-nu] - urefs[1 : end-nu]
+        us_err = us - urefs
         return xs_err'*Qs*xs_err + us_err'*Rs*us_err + xf_err'*Qf*xf_err
     end
     return quadratic_cost

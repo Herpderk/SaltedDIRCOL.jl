@@ -11,11 +11,12 @@ function derive_saltation_matrix(
 )::Function
     g_grad = x -> FD.gradient(guard, x)
     R_jac = x -> FD.jacobian(reset, x)
-    return (x,u) -> (
+    salt_mat(x, u) = (
         R_jac(x)
         + (flow_J(reset(x),u) - R_jac(x) * flow_I(x,u)) * g_grad(x)'
         / (g_grad(x)' * flow_I(x,u))
     )
+    return salt_mat
 end
 
 """
@@ -34,7 +35,7 @@ struct Transition
         flow_J::Function,
         guard::Function,
         reset::Function
-    )
+    )::Transition
         salt_expr = derive_saltation_matrix(flow_I, flow_J, guard, reset)
         return new(flow_I, flow_J, guard, reset, salt_expr)
     end

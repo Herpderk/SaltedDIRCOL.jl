@@ -4,7 +4,7 @@
 Raises an error if a transition time step is not at least 2 more than the first time step or previous transition time step. Also raises an error if the final transition time step is >= the horizon length N.
 """
 function assert_timings(
-    idx::VariableIndices,
+    params::ProblemParameters,
     sequence::Vector{TransitionTiming}
 )::Nothing
     k = 1
@@ -13,25 +13,25 @@ function assert_timings(
             "Please have at least 2 time steps between transitions!") : nothing
         k = timing.k
     end
-    sequence[end].k >= idx.dims.N ? error(
+    sequence[end].k >= params.dims.N ? error(
         "Final transition time step should be < horizon length N!") : nothing
 end
 
 """
-    get_variables(idx, k, y, h=nothing)
+    get_primals(params, k, y, h=nothing)
 
 Returns a tuple of (decision) variables for computing dynamics defect residuals for a given time step.
 """
-function get_variables(
-    idx::VariableIndices,
+function get_primals(
+    params::ProblemParameters,
     k::Int,
     y::RealValue,
     h::Union{Nothing, Real}
 )::Tuple{RealValue, RealValue, RealValue, Union{Nothing, Real}}
-    x0 = y[idx.x[k]]
-    u0 = y[idx.u[k]]
-    x1 = y[idx.x[k+1]]
-    hval = isnothing(h) ? y[idx.h[k]] : h
+    x0 = y[params.idx.x[k]]
+    u0 = y[params.idx.u[k]]
+    x1 = y[params.idx.x[k+1]]
+    hval = isnothing(h) ? y[params.idx.h[k]] : h
     return x0, u0, x1, hval
 end
 
@@ -41,30 +41,31 @@ end
 Computes dynamics defect residuals for a given integration scheme and transition sequence.
 """
 function dynamics_defect(
-    idx::VariableIndices,
-    integrator::Function,
+    params::ProblemParameters,
     sequence::Vector{TransitionTiming},
     y::RealValue,
     h::Union{Nothing, Real} = nothing
-)::RealValue
-    assert_timings(idx, sequence)
+)#::RealValue
+    assert_timings(params, sequence)
 
     # Init defect residuals and time step counter
-    c = [zeros(idx.dims.nx) for k = 1:idx.dims.N-1]
+    c = [zeros(eltype(y), params.dims.nx) for k = 1:params.dims.N-1]
     k_start = 1
 
     # Iterate over each hybrid mode and time step
     for timing = sequence
         for k = k_start : timing.k
             # Get states, inputs and time step duration
-            x0, u0, x1, hval = get_variables(idx, k, y, h)
+            x0, u0, x1, hval = get_primals(params, k, y, h)
             if k == timing.k
                 # Assume reset occurs at start of time step and integrate after
                 xJ = timing.transition.reset(x0)
-                c[k] = integrator(timing.transition.flow_J, xJ, u0, x1, hval)
+                c[k] = params.integrator(
+                    timing.transition.flow_J, xJ, u0, x1, hval)
             else
                 # Integrate smooth dynamics
-                c[k] = integrator(timing.transition.flow_I, x0, u0, x1, hval)
+                c[k] = params.integrator(
+                    timing.transition.flow_I, x0, u0, x1, hval)
             end
         end
         # Update starting time step of next mode
@@ -72,69 +73,88 @@ function dynamics_defect(
     end
 
     # Integrate over remaining time steps
-    if k_start < idx.dims.N
-        for k = k_start : idx.dims.N-1
-            x0, u0, x1, hval = get_variables(idx, k, y, h)
-            c[k] = integrator(sequence[end].transition.flow_J, x0, u0, x1, hval)
+    if k_start < params.dims.N
+        for k = k_start : params.dims.N-1
+            x0, u0, x1, hval = get_primals(params, k, y, h)
+            c[k] = params.integrator(
+                sequence[end].transition.flow_J, x0, u0, x1, hval)
         end
     end
     return vcat(c...)
 end
 
 """
-    guard_touchdown(idx, sequence, y)
-
-Computes guard "touchdown" residuals at time steps right before transitions.
-"""
-function guard_touchdown(
-    idx::VariableIndices,
-    sequence::Vector{TransitionTiming},
-    y::RealValue
-)::RealValue
-    assert_timings(idx, sequence)
-    c = zeros(length(sequence))
-
-    # Evaluate touchdown residuals right before transitions
-    for (i, timing) in enumerate(sequence)
-        c[i] = timing.transition.guard(y[idx.x[timing.k-1]])
-    end
-    return c
-end
-
-"""
-    guard_keepout(idx, terminal_guard, sequence, y)
+    guard_keepout(params, term_guard, sequence, y)
 
 Computes guard "keep-out" residuals at every time step without touchdown. Requires an additional terminal guard for keep-out after the last transition.
 """
 function guard_keepout(
-    idx::VariableIndices,
-    terminal_guard::Function,
+    params::ProblemParameters,
     sequence::Vector{TransitionTiming},
+    term_guard::Function,
     y::RealValue
-)::RealValue
-    assert_timings(idx, sequence)
+)#::RealValue
+    assert_timings(params, sequence)
 
     # Init keepout residuals
-    c = zeros(idx.dims.N - length(sequence))
+    c = zeros(eltype(y), params.dims.N - length(sequence))
     k_start = 1
     i = 1
 
     # Iterate over each hybrid mode and time step
     for timing = sequence
         for k = k_start : timing.k-2
-            c[i] = timing.transition.guard(y[idx.x[k]])
+            # Flip the guard to adhere to NLP convention: g(x) <= 0
+            c[i] = -timing.transition.guard(y[params.idx.x[k]])
             i += 1
         end
-        # Update starting time step; skip time step with touchdown constraint
+        # Update starting time step; skip time steps with touchdown constraint
         k_start = timing.k
     end
 
     # Evaluate terminal guard residuals over remaining time steps
-    if k_start < idx.dims.N
-        for k = k_start : idx.dims.N
-            c[i] = terminal_guard(y[idx.x[k]])
+    if k_start < params.dims.N
+        for k = k_start : params.dims.N
+            c[i] = term_guard(y[params.idx.x[k]])
             i += 1
         end
     end
     return c
+end
+
+"""
+    guard_touchdown(params, sequence, y)
+
+Computes guard "touchdown" residuals at time steps right before transitions.
+"""
+function guard_touchdown(
+    params::ProblemParameters,
+    sequence::Vector{TransitionTiming},
+    y::RealValue
+)#::RealValue
+    assert_timings(params, sequence)
+    return [
+        timing.transition.guard(y[params.idx.x[timing.k-1]])
+        for timing in sequence
+    ]
+end
+
+"""
+"""
+function initial_condition(
+    params::ProblemParameters,
+    xic::RealValue,
+    y::RealValue
+)#::RealValue
+    return y[params.idx.x[1]] - xic
+end
+
+"""
+"""
+function goal_condition(
+    params::ProblemParameters,
+    xg::RealValue,
+    y::RealValue
+)#::RealValue
+    return y[params.idx.x[params.dims.N]] - xg
 end

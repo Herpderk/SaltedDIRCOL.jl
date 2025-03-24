@@ -20,7 +20,7 @@ function bouncing_ball(
 
     # Define impact transition
     g_impact = x -> x[2]
-    R_impact = x -> vcat(x[1:3], -e * x[4])
+    R_impact = x -> [x[1:3]; -e * x[4]]
     impact = Transition(ballistic_flow, ballistic_flow, g_impact, R_impact)
 
     # Create hybrid system
