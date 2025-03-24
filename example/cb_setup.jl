@@ -1,5 +1,6 @@
 using Pkg; Pkg.activate(joinpath(@__DIR__, ".."))
 using LinearAlgebra
+using Revise
 using SaltedDIRCOL
 
 # Define hybrid system model
@@ -15,7 +16,7 @@ N = 100
 Δt = 0.01
 
 # Define trajopt problem parameters
-problem = SaltedDIRCOL.ProblemParameters(
+params = SaltedDIRCOL.ProblemParameters(
     SaltedDIRCOL.hermite_simpson, system, Q, R, Qf, N, Δt
 )
 
@@ -36,13 +37,11 @@ xgc = [0.5; 0.2; 0.0; 0.0]
 xrefs = repeat(xgc, N)
 urefs = zeros((N-1) * system.nu)
 
-# Define solver parameters
+# Define solver callback functions and gradients/jacobians
 callbacks = SaltedDIRCOL.SolverCallbacks(
-    problem, sequence, term_guard, xrefs, urefs, xic
+    params, sequence, term_guard, xrefs, urefs, xic
 )
 
-# Test solver callback functions
-y = zeros(problem.dims.ny)
-@show callbacks.f(y)
-@show size(callbacks.g(y))
-@show size(callbacks.h(y))
+@time size(callbacks.fgrad(zeros(params.dims.ny)))
+@time size(callbacks.gjac(zeros(params.dims.ny)))
+@time size(callbacks.hjac(zeros(params.dims.ny)))

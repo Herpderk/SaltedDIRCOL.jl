@@ -31,7 +31,9 @@ struct SolverCallbacks
     f::Function
     g::Function
     h::Function
-    h_jac::Union{Nothing, Function}
+    fgrad::Function
+    gjac::Function
+    hjac::Function
     function SolverCallbacks(
         params::ProblemParameters,
         sequence::Vector{TransitionTiming},
@@ -39,17 +41,16 @@ struct SolverCallbacks
         xrefs::RealValue,
         urefs::RealValue,
         xic::RealValue,
-        xgc::Union{Nothing, Real} = nothing,
-        custom_h_jac::Bool = false
+        xgc::Union{Nothing, Real} = nothing
     )::SolverCallbacks
-        # Define objective callback
+        # Define objective
         f = y -> params.objective(xrefs, urefs, y)
 
-        # Compose inequality constraint callbacks
+        # Compose inequality constraints
         keepout = y -> guard_keepout(params, sequence, term_guard, y)
         g = y -> keepout(y)
 
-        # Compose equality constraint callbacks
+        # Compose equality constraints
         ic = y -> initial_condition(params, xic, y)
         defect = y -> dynamics_defect(params, sequence, y, params.Δt)
         touchdown = y -> guard_touchdown(params, sequence, y)
@@ -59,6 +60,11 @@ struct SolverCallbacks
             gc = y -> goal_condition(params, xgc, y)
             h = y -> [ic(y); defect(y); touchdown(y); gc(y)]
         end
-        return new(f, g, h, nothing)
+
+        # Autodiff all callbacks
+        fgrad = y -> ForwardDiff.gradient(f, y)
+        gjac = y -> ForwardDiff.jacobian(g, y)
+        hjac = y -> ForwardDiff.jacobian(h, y)
+        return new(f, g, h,fgrad, gjac, hjac)
     end
 end

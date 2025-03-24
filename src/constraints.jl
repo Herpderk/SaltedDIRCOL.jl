@@ -54,30 +54,27 @@ function dynamics_defect(
 
     # Iterate over each hybrid mode and time step
     for timing = sequence
-        for k = k_start : timing.k
-            # Get states, inputs and time step duration
-            x0, u0, x1, hval = get_primals(params, k, y, Δt)
-            if k == timing.k
-                # Assume reset occurs at start of time step and integrate after
-                xJ = timing.transition.reset(x0)
-                c[k] = params.integrator(
-                    timing.transition.flow_J, xJ, u0, x1, hval)
-            else
-                # Integrate smooth dynamics
-                c[k] = params.integrator(
-                    timing.transition.flow_I, x0, u0, x1, hval)
-            end
+        # Integrate smooth dynamics
+        flow_I = timing.transition.flow_I
+        for k = k_start : timing.k-1
+            c[k] = params.integrator(flow_I, get_primals(params, k, y, Δt)...)
         end
+
+        # Integrate transition dynamics
+        flow_J = timing.transition.flow_J
+        x0, u0, x1, Δtval = get_primals(params, timing.k, y, Δt)
+        xJ = timing.transition.reset(x0)
+        c[timing.k] = params.integrator(flow_J, xJ, u0, x1, Δtval)
+
         # Update starting time step of next mode
         k_start = timing.k + 1
     end
 
     # Integrate over remaining time steps
     if k_start < params.dims.N
+        flow_J = sequence[end].transition.flow_J
         for k = k_start : params.dims.N-1
-            x0, u0, x1, hval = get_primals(params, k, y, Δt)
-            c[k] = params.integrator(
-                sequence[end].transition.flow_J, x0, u0, x1, hval)
+            c[k] = params.integrator(flow_J, get_primals(params, k, y, Δt)...)
         end
     end
     return vcat(c...)
@@ -115,7 +112,7 @@ function guard_keepout(
     # Evaluate terminal guard residuals over remaining time steps
     if k_start < params.dims.N
         for k = k_start : params.dims.N
-            c[i] = term_guard(y[params.idx.x[k]])
+            c[i] = -term_guard(y[params.idx.x[k]])
             i += 1
         end
     end
@@ -133,10 +130,11 @@ function guard_touchdown(
     y::RealValue
 )::RealValue
     assert_timings(params, sequence)
-    return [
-        timing.transition.guard(y[params.idx.x[timing.k-1]])
-        for timing in sequence
-    ]
+    c = zeros(eltype(y), length(sequence))
+    for (i, timing) in enumerate(sequence)
+        c[i] = timing.transition.guard(y[params.idx.x[timing.k-1]])
+    end
+    return c
 end
 
 """
