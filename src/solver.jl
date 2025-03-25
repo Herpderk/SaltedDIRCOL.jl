@@ -1,4 +1,7 @@
 """
+    ProblemParameters(integrator, system, Q, R, Qf, N, Δt)
+
+Contains the parameters for a trajectory optimization problem with an assumed non-time-varying quadratic objective.
 """
 struct ProblemParameters
     integrator::Function
@@ -26,6 +29,9 @@ struct ProblemParameters
 end
 
 """
+    SolverCallbacks(params, sequence, term_guard, xrefs, urefs, xic, xgc)
+
+Contains solver-agnostic callback functions, constraint jacobian and Lagrangian hessian sparsity patterns, and dual variable dimensions.
 """
 struct SolverCallbacks
     f::Function
@@ -103,7 +109,10 @@ struct SolverCallbacks
 end
 
 """
-Documentation: https://github.com/jump-dev/Ipopt.jl/tree/master
+    IpoptCallbacks(cb)
+
+Contains callbacks for the Julia-wrapped Ipop C interface according to the
+solver's documentation: https://github.com/jump-dev/Ipopt.jl/tree/master.
 """
 struct IpoptCallbacks
     eval_f::Function
@@ -185,6 +194,9 @@ struct IpoptCallbacks
 end
 
 """
+    ipopt_solve(params, cb, y0, print_level; approx_hessian)
+
+Sets up and solves a trajectory optimization using Ipopt given a set of problem parameters and solver callback functions.
 """
 function ipopt_solve(
     params::ProblemParameters,
@@ -225,6 +237,6 @@ function ipopt_solve(
 
     # Warm-start and solve
     prob.x = y0
-    solvestat = Ipopt.IpoptSolve(prob)
+    status = Ipopt.IpoptSolve(prob)
     return prob
 end

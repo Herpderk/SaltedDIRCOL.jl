@@ -63,6 +63,9 @@ struct PrimalIndices
 end
 
 """
+    DualDimensions(ng, nh)
+
+Contains dimensions of the problem constraints/dual variables. The value of ng corresponds to the inequality constraints, while nh is for the equality constraints. The value of nc is the sum of ng and nh.
 """
 struct DualDimensions
     ng::Int
@@ -78,6 +81,9 @@ struct DualDimensions
 end
 
 """
+    SparsityPattern(A)
+
+Contains the number of non-zero values and their row/column coordinates for a given matrix A.
 """
 struct SparsityPattern
     nzvals::Int
