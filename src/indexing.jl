@@ -94,3 +94,14 @@ struct SparsityPattern
         return new(length(vals), row_idx, col_idx)
     end
 end
+
+"""
+"""
+function decompose_trajectory(
+    idx::PrimalIndices,
+    y::Vector
+)::Tuple{Vector, Vector}
+    xs = vcat([y[i] for i = idx.x[1 : end]]...)
+    us = vcat([y[i] for i = idx.u[1 : end]]...)
+    return xs, us
+end
