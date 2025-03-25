@@ -85,8 +85,8 @@ Contains the number of non-zero values and their row/column coordinates for a gi
 """
 struct SparsityPattern
     nzvals::Int
-    row_idx::Vector{Int}
-    col_idx::Vector{Int}
+    row_coords::Vector{Int}
+    col_coords::Vector{Int}
     function SparsityPattern(
         A::Matrix
     )::SparsityPattern

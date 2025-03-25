@@ -113,6 +113,7 @@ struct SolverCallbacks
         dims = DualDimensions(ng, nh)
 
         # Autodiff all callbacks
+        println("forward-diffing...")
         f_grad = y -> ForwardDiff.gradient(f, y)
         jacs = [y -> ForwardDiff.jacobian(func, y) for func = (g, h, c)]
         f_hess = y -> ForwardDiff.hessian(f, y)
@@ -121,13 +122,13 @@ struct SolverCallbacks
         else
             Lc_hess = (y, λ) -> ForwardDiff.hessian(dy -> Lc(dy, λ), y)
         end
-        println("forwarddiffing finished")
+
         # Get constraint jacobian and Lagrangian hessian sparsity patterns
+        println("getting sparsity patterns...")
         λinf = fill(Inf, dims.nc)
         c_jac = jacs[end]
         c_jac_sp = SparsityPattern(c_jac(yinf))
         L_hess_sp = SparsityPattern(f_hess(yinf) + Lc_hess(yinf, λinf))
-        println("got sparsity patterns")
         return new(
             f, Lc, g, h, c,
             f_grad, jacs...,
@@ -182,15 +183,15 @@ struct IpoptCallbacks
             values::Union{Nothing, Vector}
         )::Nothing
             if isnothing(values)
-                rows .= cb.c_jac_sp.row_idx
-                cols .= cb.c_jac_sp.col_idx
+                rows .= cb.c_jac_sp.row_coords
+                cols .= cb.c_jac_sp.col_coords
             else
                 #values .= sparse(cb.c_jac(x)).nzval
                 c_jac = cb.c_jac(x)
                 @inbounds @simd for i = 1:cb.c_jac_sp.nzvals
                     values[i] = c_jac[
-                        cb.c_jac_sp.row_idx[i],
-                        cb.c_jac_sp.col_idx[i]
+                        cb.c_jac_sp.row_coords[i],
+                        cb.c_jac_sp.col_coords[i]
                     ]
                 end
             end
@@ -206,14 +207,14 @@ struct IpoptCallbacks
             values::Union{Nothing, Vector}
         )::Nothing
             if isnothing(values)
-                rows .= cb.L_hess_sp.row_idx
-                cols .= cb.L_hess_sp.col_idx
+                rows .= cb.L_hess_sp.row_coords
+                cols .= cb.L_hess_sp.col_coords
             else
                 L_hess = obj_factor * cb.f_hess(x) + cb.Lc_hess(x, lambda)
                 @inbounds @simd for i = 1:cb.L_hess_sp.nzvals
                     values[i] = L_hess[
-                        cb.L_hess_sp.row_idx[i],
-                        cb.L_hess_sp.col_idx[i]
+                        cb.L_hess_sp.row_coords[i],
+                        cb.L_hess_sp.col_coords[i]
                     ]
                 end
             end
@@ -241,7 +242,7 @@ function ipopt_solve(
     yub = fill(Inf, params.dims.ny)
     clb = [fill(-Inf, cb.dims.ng); zeros(cb.dims.nh)]
     cub = zeros(cb.dims.nc)
-    println("creating ipopt problem")
+
     # Create Ipopt problem
     prob = Ipopt.CreateIpoptProblem(
         params.dims.ny,
@@ -266,8 +267,8 @@ function ipopt_solve(
     Ipopt.AddIpoptIntOption(prob, "print_level", print_level)
 
     # Warm-start and solve
+    println("starting ipopt...")
     prob.x = y0
-    println("starting ipopt")
     status = Ipopt.IpoptSolve(prob)
     return prob
 end
