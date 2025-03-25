@@ -191,7 +191,7 @@ function ipopt_solve(
     cb::SolverCallbacks,
     y0::Value,
     print_level::Int = 5;
-    approx_hessian::Bool = false
+    approx_hessian::Bool = true
 )::IpoptProblem
     # Define primal and constraint bounds
     cb_ipopt = IpoptCallbacks(cb)
