@@ -45,6 +45,7 @@ function assert_timings(
     end
     sequence[end].k >= params.dims.N ? error(
         "Final transition time step should be < horizon length N!") : nothing
+    return
 end
 
 """
