@@ -64,10 +64,11 @@ struct SolverCallbacks
     h_jac::Function
     c_jac::Function
     f_hess::Function
-    Lc_hess::Function
+    Lc_hess::Union{Function, Nothing}
     c_jac_sp::SparsityPattern
-    L_hess_sp::SparsityPattern
+    L_hess_sp::Union{SparsityPattern, Nothing}
     dims::DualDimensions
+    gauss_newton::Bool
     function SolverCallbacks(
         params::ProblemParameters,
         sequence::Vector{TransitionTiming},
@@ -75,7 +76,8 @@ struct SolverCallbacks
         xrefs::Vector,
         urefs::Vector,
         xic::Vector,
-        xgc::Union{Nothing, Vector} = nothing
+        xgc::Union{Nothing, Vector} = nothing;
+        gauss_newton::Bool = false
     )::SolverCallbacks
         # Enforce transition sequence timing rules
         assert_timings(params, sequence)
@@ -104,29 +106,34 @@ struct SolverCallbacks
         # Define constraint component of Lagrangian
         Lc = (y, λ) -> λ' * c(y)
 
-        # Autodiff all callbacks
-        f_grad = y -> ForwardDiff.gradient(f, y)
-        jacs = [y -> ForwardDiff.jacobian(func, y) for func = (g, h, c)]
-        f_hess = y -> ForwardDiff.hessian(f, y)
-        Lc_hess = (y, λ) -> ForwardDiff.hessian(dy -> Lc(dy, λ), y)
-
         # Get constraint / dual variable dimensions
         yinf = fill(Inf, params.dims.ny)
         ng = length(g(yinf))
         nh = length(h(yinf))
         dims = DualDimensions(ng, nh)
 
+        # Autodiff all callbacks
+        f_grad = y -> ForwardDiff.gradient(f, y)
+        jacs = [y -> ForwardDiff.jacobian(func, y) for func = (g, h, c)]
+        f_hess = y -> ForwardDiff.hessian(f, y)
+        if gauss_newton
+            Lc_hess = (y, λ) -> zeros(params.dims.ny, params.dims.ny)
+        else
+            Lc_hess = (y, λ) -> ForwardDiff.hessian(dy -> Lc(dy, λ), y)
+        end
+        println("forwarddiffing finished")
         # Get constraint jacobian and Lagrangian hessian sparsity patterns
         λinf = fill(Inf, dims.nc)
         c_jac = jacs[end]
         c_jac_sp = SparsityPattern(c_jac(yinf))
         L_hess_sp = SparsityPattern(f_hess(yinf) + Lc_hess(yinf, λinf))
+        println("got sparsity patterns")
         return new(
             f, Lc, g, h, c,
             f_grad, jacs...,
             f_hess, Lc_hess,
             c_jac_sp, L_hess_sp,
-            dims
+            dims, gauss_newton
         )
     end
 end
@@ -226,7 +233,7 @@ function ipopt_solve(
     cb::SolverCallbacks,
     y0::Vector,
     print_level::Int = 5;
-    approx_hessian::Bool = true
+    gauss_newton::Bool = true
 )::IpoptProblem
     # Define primal and constraint bounds
     cb_ipopt = IpoptCallbacks(cb)
@@ -234,7 +241,7 @@ function ipopt_solve(
     yub = fill(Inf, params.dims.ny)
     clb = [fill(-Inf, cb.dims.ng); zeros(cb.dims.nh)]
     cub = zeros(cb.dims.nc)
-
+    println("creating ipopt problem")
     # Create Ipopt problem
     prob = Ipopt.CreateIpoptProblem(
         params.dims.ny,
@@ -253,13 +260,14 @@ function ipopt_solve(
     )
 
     # Add solver options
-    if approx_hessian
+    if gauss_newton | cb.gauss_newton
         Ipopt.AddIpoptStrOption(prob, "hessian_approximation", "limited-memory")
     end
     Ipopt.AddIpoptIntOption(prob, "print_level", print_level)
 
     # Warm-start and solve
     prob.x = y0
+    println("starting ipopt")
     status = Ipopt.IpoptSolve(prob)
     return prob
 end
