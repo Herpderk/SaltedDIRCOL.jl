@@ -39,6 +39,9 @@ struct SolverCallbacks
     c_jac::Function
     f_hess::Function
     Lc_hess::Function
+    c_jac_sp::SparsityPattern
+    L_hess_sp::SparsityPattern
+    dims::DualDimensions
     function SolverCallbacks(
         params::ProblemParameters,
         sequence::Vector{TransitionTiming},
@@ -77,24 +80,30 @@ struct SolverCallbacks
         jacs = [y -> ForwardDiff.jacobian(func, y) for func = (g, h, c)]
         f_hess = y -> ForwardDiff.hessian(f, y)
         Lc_hess = (y, λ) -> ForwardDiff.hessian(dy -> Lc(dy, λ), y)
+
+        # Get constraint / dual variable dimensions
+        yinf = fill(Inf, params.dims.ny)
+        ng = length(g(yinf))
+        nh = length(h(yinf))
+        dims = DualDimensions(ng, nh)
+
+        # Get constraint jacobian and Lagrangian hessian sparsity patterns
+        λinf = fill(Inf, dims.nc)
+        c_jac = jacs[end]
+        c_jac_sp = SparsityPattern(c_jac(yinf))
+        L_hess_sp = SparsityPattern(f_hess(yinf) + Lc_hess(yinf, λinf))
         return new(
             f, Lc, g, h, c,
             f_grad, jacs...,
-            f_hess, Lc_hess
+            f_hess, Lc_hess,
+            c_jac_sp, L_hess_sp,
+            dims
         )
     end
 end
 
 """
-"""
-function get_sparsity_pattern(
-    A::Matrix
-)::Tuple{Vector{Int}, Vector{Int}}
-    rows, cols, vals = findnz(sparse(A))
-    return rows, cols
-end
-
-"""
+Documentation: https://github.com/jump-dev/Ipopt.jl/tree/master
 """
 struct IpoptCallbacks
     eval_f::Function
@@ -103,72 +112,119 @@ struct IpoptCallbacks
     eval_jac_g::Function
     eval_h::Function
     function IpoptCallbacks(
-        params::ProblemParameters,
         cb::SolverCallbacks
     )::IpoptCallbacks
-        # Get constraint jacobian and Lagrangian hessian sparsity patterns
-        yinf = Inf * ones(params.dims.ny)
-        λinf = Inf * ones(length(cb.c(yinf)))
-        c_rows, c_cols = get_sparsity_pattern(cb.c_jac(yinf))
-        L_rows, L_cols = get_sparsity_pattern(
-            cb.f_hess(yinf) + cb.Lc_hess(yinf, λinf)
-        )
-
-        # Objective evaluation
-        function eval_f(
-            x::Vector{Float64}
+        function eval_f(        # Objective evaluation
+            x::Value
         )::Float64
-            return cb.f(x)
+            return Float64(cb.f(x))
         end
 
-        # Constraint evaluation
-        function eval_g(
-            x::Vector{Float64},
-            g::Vector{Float64}
+        function eval_g(        # Constraint evaluation
+            x::Value,
+            g::Value
         )::Nothing
-            g = cb.c(x)
+            g .= cb.c(x)
+            return
         end
 
-        # Objective gradient
-        function eval_grad_f(
-            x::Vector{Float64},
-            grad_f::Vector{Float64}
+        function eval_grad_f(   # Objective gradient
+            x::Value,
+            grad_f::Value
         )::Nothing
-            grad_f = cb.f_grad(x)
+            grad_f .= cb.f_grad(x)
+            return
         end
 
-        # Constraint jacobian
-        function eval_jac_g(
-            x::Vector{Float64},
+        function eval_jac_g(    # Constraint jacobian
+            x::Value,
             rows::Vector{Cint},
             cols::Vector{Cint},
-            values::Union{Nothing, Vector{Float64}}
+            values::Union{Nothing, Value}
         )::Nothing
             if isnothing(values)
-                rows = c_rows
-                cols = c_cols
+                rows .= cb.c_jac_sp.row_idx
+                cols .= cb.c_jac_sp.col_idx
             else
-                values = sparse(cb.c_jac(x)).nzval
+                #values .= sparse(cb.c_jac(x)).nzval
+                c_jac = cb.c_jac(x)
+                @inbounds @simd for i = 1:cb.c_jac_sp.nzvals
+                    values[i] = c_jac[
+                        cb.c_jac_sp.row_idx[i],
+                        cb.c_jac_sp.col_idx[i]
+                    ]
+                end
             end
+            return
         end
 
-        # Lagrangian hessian
-        function eval_h(
-            x::Vector{Float64},
+        function eval_h(        # Lagrangian hessian
+            x::Value,
             rows::Vector{Cint},
             cols::Vector{Cint},
-            obj_factor::Float64,
-            lambda::Float64,
-            values::Union{Nothing, Vector{Float64}}
+            obj_factor::Real,
+            lambda::Value,
+            values::Union{Nothing, Value}
         )::Nothing
             if isnothing(values)
-                rows = L_rows
-                cols = L_cols
+                rows .= cb.L_hess_sp.row_idx
+                cols .= cb.L_hess_sp.col_idx
             else
-                Lhess = obj_factor * cb.f_hess(x) + cb.Lc_hess(x, lambda)
-                values = sparse(Lhess).nzval
+                L_hess = obj_factor * cb.f_hess(x) + cb.Lc_hess(x, lambda)
+                @inbounds @simd for i = 1:cb.L_hess_sp.nzvals
+                    values[i] = L_hess[
+                        cb.L_hess_sp.row_idx[i],
+                        cb.L_hess_sp.col_idx[i]
+                    ]
+                end
             end
+            return
         end
         return new(eval_f, eval_g, eval_grad_f, eval_jac_g, eval_h)
     end
+end
+
+"""
+"""
+function ipopt_solve(
+    params::ProblemParameters,
+    cb::SolverCallbacks,
+    y0::Value,
+    print_level::Int = 5;
+    approx_hessian::Bool = false
+)::IpoptProblem
+    # Define primal and constraint bounds
+    cb_ipopt = IpoptCallbacks(cb)
+    ylb = fill(-Inf, params.dims.ny)
+    yub = fill(Inf, params.dims.ny)
+    clb = [fill(-Inf, cb.dims.ng); zeros(cb.dims.nh)]
+    cub = zeros(cb.dims.nc)
+
+    # Create Ipopt problem
+    prob = Ipopt.CreateIpoptProblem(
+        params.dims.ny,
+        ylb,
+        yub,
+        cb.dims.nc,
+        clb,
+        cub,
+        cb.c_jac_sp.nzvals,
+        cb.L_hess_sp.nzvals,
+        cb_ipopt.eval_f,
+        cb_ipopt.eval_g,
+        cb_ipopt.eval_grad_f,
+        cb_ipopt.eval_jac_g,
+        cb_ipopt.eval_h
+    )
+
+    # Add solver options
+    if approx_hessian
+        Ipopt.AddIpoptStrOption(prob, "hessian_approximation", "limited-memory")
+    end
+    Ipopt.AddIpoptIntOption(prob, "print_level", print_level)
+
+    # Warm-start and solve
+    prob.x = y0
+    solvestat = Ipopt.IpoptSolve(prob)
+    return prob
 end

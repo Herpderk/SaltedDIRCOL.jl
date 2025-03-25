@@ -17,9 +17,7 @@ struct PrimalDimensions
         nu::Int,
         nt::Int
     )::PrimalDimensions
-        if !(nt in (0, 1))
-            error("Dimension of Δt must be 0 or 1!")
-        end
+        !(nt in (0, 1)) ? error("Dimension of Δt must be 0 or 1!") : nothing
         ny = N*nx + (N-1)*(nu + nt)
         return new(N, nx, nu, nt, ny)
     end
@@ -64,3 +62,31 @@ struct PrimalIndices
     end
 end
 
+"""
+"""
+struct DualDimensions
+    ng::Int
+    nh::Int
+    nc::Int
+    function DualDimensions(
+        ng::Int,
+        nh::Int
+    )::DualDimensions
+        nc = ng + nh
+        return new(ng, nh, nc)
+    end
+end
+
+"""
+"""
+struct SparsityPattern
+    nzvals::Int
+    row_idx::Vector{Int}
+    col_idx::Vector{Int}
+    function SparsityPattern(
+        A::Matrix
+    )::SparsityPattern
+        row_idx, col_idx, vals = findnz(sparse(A))
+        return new(length(vals), row_idx, col_idx)
+    end
+end

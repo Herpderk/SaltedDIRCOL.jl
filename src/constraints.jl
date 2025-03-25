@@ -56,7 +56,7 @@ function dynamics_defect(
     for timing = sequence
         # Integrate smooth dynamics
         flow_I = timing.transition.flow_I
-        for k = k_start : timing.k-1
+        @inbounds for k = k_start : timing.k-1
             c[k] = params.integrator(flow_I, get_primals(params, k, y, Δt)...)
         end
 
@@ -73,7 +73,7 @@ function dynamics_defect(
     # Integrate over remaining time steps
     if k_start < params.dims.N
         flow_J = sequence[end].transition.flow_J
-        for k = k_start : params.dims.N-1
+        @inbounds for k = k_start : params.dims.N-1
             c[k] = params.integrator(flow_J, get_primals(params, k, y, Δt)...)
         end
     end
@@ -100,7 +100,7 @@ function guard_keepout(
 
     # Iterate over each hybrid mode and time step
     for timing = sequence
-        for k = k_start : timing.k-2
+        @inbounds for k = k_start : timing.k-2
             # Flip the guard to adhere to NLP convention: g(x) <= 0
             c[i] = -timing.transition.guard(y[params.idx.x[k]])
             i += 1
@@ -111,7 +111,7 @@ function guard_keepout(
 
     # Evaluate terminal guard residuals over remaining time steps
     if k_start < params.dims.N
-        for k = k_start : params.dims.N
+        @inbounds for k = k_start : params.dims.N
             c[i] = -term_guard(y[params.idx.x[k]])
             i += 1
         end
@@ -131,7 +131,7 @@ function guard_touchdown(
 )::Value
     assert_timings(params, sequence)
     c = zeros(eltype(y), length(sequence))
-    for (i, timing) in enumerate(sequence)
+    @inbounds for (i, timing) in enumerate(sequence)
         c[i] = timing.transition.guard(y[params.idx.x[timing.k-1]])
     end
     return c
