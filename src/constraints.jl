@@ -1,23 +1,4 @@
 """
-    assert_timings(params, sequence)
-
-Raises an error if a transition time step is not at least 2 more than the first time step or previous transition time step. Also raises an error if the final transition time step is >= the horizon length N.
-"""
-function assert_timings(
-    params::ProblemParameters,
-    sequence::Vector{TransitionTiming}
-)::Nothing
-    k = 1
-    for timing = sequence
-        timing.k < k+2 ? error(
-            "Please have at least 2 time steps between transitions!") : nothing
-        k = timing.k
-    end
-    sequence[end].k >= params.dims.N ? error(
-        "Final transition time step should be < horizon length N!") : nothing
-end
-
-"""
     get_primals(params, k, y, Δt)
 
 Returns a tuple of (decision) variables for computing dynamics defect residuals for a given time step.
@@ -46,8 +27,6 @@ function dynamics_defect(
     y::Vector,
     Δt::Union{Nothing, Real} = nothing
 )::Vector
-    assert_timings(params, sequence)
-
     # Init defect residuals and time step counter
     c = [zeros(eltype(y), params.dims.nx) for k = 1:params.dims.N-1]
     k_start = 1
@@ -91,8 +70,6 @@ function guard_keepout(
     term_guard::Function,
     y::Vector
 )::Vector
-    assert_timings(params, sequence)
-
     # Init keepout residuals
     c = zeros(eltype(y), params.dims.N - length(sequence))
     k_start = 1
@@ -129,7 +106,6 @@ function guard_touchdown(
     sequence::Vector{TransitionTiming},
     y::Vector
 )::Vector
-    assert_timings(params, sequence)
     c = zeros(eltype(y), length(sequence))
     @inbounds for (i, timing) in enumerate(sequence)
         c[i] = timing.transition.guard(y[params.idx.x[timing.k-1]])

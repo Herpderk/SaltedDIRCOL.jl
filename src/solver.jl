@@ -29,6 +29,25 @@ struct ProblemParameters
 end
 
 """
+    assert_timings(params, sequence)
+
+Raises an error if a transition time step is not at least 2 more than the first time step or previous transition time step. Also raises an error if the final transition time step is >= the horizon length N.
+"""
+function assert_timings(
+    params::ProblemParameters,
+    sequence::Vector{TransitionTiming}
+)::Nothing
+    k = 1
+    for timing = sequence
+        timing.k < k+2 ? error(
+            "Please have at least 2 time steps between transitions!") : nothing
+        k = timing.k
+    end
+    sequence[end].k >= params.dims.N ? error(
+        "Final transition time step should be < horizon length N!") : nothing
+end
+
+"""
     SolverCallbacks(params, sequence, term_guard, xrefs, urefs, xic, xgc)
 
 Contains solver-agnostic callback functions, constraint jacobian and Lagrangian hessian sparsity patterns, and dual variable dimensions.
@@ -57,6 +76,9 @@ struct SolverCallbacks
         xic::Vector,
         xgc::Union{Nothing, Vector} = nothing
     )::SolverCallbacks
+        # Enforce transition sequence timing rules
+        assert_timings(params, sequence)
+
         # Define objective
         f = y -> params.objective(xrefs, urefs, y)
 
