@@ -6,8 +6,8 @@ using ForwardDiff
 using Ipopt
 using Plots
 
-include("utils.jl")
 include("hybrid_system.jl")
+include("indexing.jl")
 include("integrators.jl")
 include("objectives.jl")
 include("models.jl")
