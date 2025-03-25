@@ -46,5 +46,5 @@ cb_ipopt = SaltedDIRCOL.IpoptCallbacks(cb)
 
 # Solve using Ipopt
 y0 = zeros(params.dims.ny)
-sol = SaltedDIRCOL.ipopt_solve(params, cb, y0, approx_hessian=false)
+sol = SaltedDIRCOL.ipopt_solve(params, cb, y0)
 nothing
