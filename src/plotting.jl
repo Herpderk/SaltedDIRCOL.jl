@@ -10,8 +10,7 @@ function plot_2d_trajectory(
     xlabel::String = "x",
     ylabel::String = "y",
     xlim::Tuple{Real, Real} = (0.0, 10.0),
-    ylim::Tuple{Real, Real} = (0.0
-    , 10.0),
+    ylim::Tuple{Real, Real} = (0.0, 10.0),
     markershape::Symbol = :none,
     markercolor::Symbol = :blue,
     markersize::Real = 2,
