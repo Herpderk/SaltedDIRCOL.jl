@@ -52,10 +52,10 @@ struct SolverCallbacks
         params::ProblemParameters,
         sequence::Vector{TransitionTiming},
         term_guard::Function,
-        xrefs::Value,
-        urefs::Value,
-        xic::Value,
-        xgc::Union{Nothing, Value} = nothing
+        xrefs::Vector,
+        urefs::Vector,
+        xic::Vector,
+        xgc::Union{Nothing, Vector} = nothing
     )::SolverCallbacks
         # Define objective
         f = y -> params.objective(xrefs, urefs, y)
@@ -124,32 +124,32 @@ struct IpoptCallbacks
         cb::SolverCallbacks
     )::IpoptCallbacks
         function eval_f(        # Objective evaluation
-            x::Value
+            x::Vector
         )::Float64
             return Float64(cb.f(x))
         end
 
         function eval_g(        # Constraint evaluation
-            x::Value,
-            g::Value
+            x::Vector,
+            g::Vector
         )::Nothing
             g .= cb.c(x)
             return
         end
 
         function eval_grad_f(   # Objective gradient
-            x::Value,
-            grad_f::Value
+            x::Vector,
+            grad_f::Vector
         )::Nothing
             grad_f .= cb.f_grad(x)
             return
         end
 
         function eval_jac_g(    # Constraint jacobian
-            x::Value,
+            x::Vector,
             rows::Vector{Cint},
             cols::Vector{Cint},
-            values::Union{Nothing, Value}
+            values::Union{Nothing, Vector}
         )::Nothing
             if isnothing(values)
                 rows .= cb.c_jac_sp.row_idx
@@ -168,12 +168,12 @@ struct IpoptCallbacks
         end
 
         function eval_h(        # Lagrangian hessian
-            x::Value,
+            x::Vector,
             rows::Vector{Cint},
             cols::Vector{Cint},
             obj_factor::Real,
-            lambda::Value,
-            values::Union{Nothing, Value}
+            lambda::Vector,
+            values::Union{Nothing, Vector}
         )::Nothing
             if isnothing(values)
                 rows .= cb.L_hess_sp.row_idx
@@ -201,7 +201,7 @@ Sets up and solves a trajectory optimization using Ipopt given a set of problem 
 function ipopt_solve(
     params::ProblemParameters,
     cb::SolverCallbacks,
-    y0::Value,
+    y0::Vector,
     print_level::Int = 5;
     approx_hessian::Bool = true
 )::IpoptProblem

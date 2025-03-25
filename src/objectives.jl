@@ -14,9 +14,9 @@ function init_quadratic_cost(
     Qs = kron(Nmat, Q)
     Rs = kron(Nmat, R)
     function quadratic_cost(
-        xrefs::Value,
-        urefs::Value,
-        y::Value
+        xrefs::Vector,
+        urefs::Vector,
+        y::Vector
     )::Real
         # Get stage state errors
         xs = vcat([y[i] for i = idx.x[1 : end-1]]...)

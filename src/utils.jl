@@ -1,5 +1,3 @@
-const Value = Union{Real, Vector}
-
 """
     PrimalDimensions(N, nx, nu, nt)
 
