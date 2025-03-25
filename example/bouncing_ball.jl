@@ -7,11 +7,11 @@ using SaltedDIRCOL
 system = SaltedDIRCOL.bouncing_ball()
 
 # Define trajopt parameters
+Q = 1e0 * diagm([1.0, 1.0, 0.0, 0.0])
+R = 1e-6 * I(system.nu)
+Qf = 1e3 * Q
 N = 100
 Δt = 0.01
-Q = 1e0 * diagm([1.0, 1.0, 0.0, 0.0])
-R =  1e-6 * I(system.nu)
-Qf = 1e3 * Q
 params = SaltedDIRCOL.ProblemParameters(
     SaltedDIRCOL.hermite_simpson, system, Q, R, Qf, N, Δt
 )
@@ -34,9 +34,9 @@ urefs = zeros((N-1) * system.nu)
 
 # Define solver callbacks
 cb = SaltedDIRCOL.SolverCallbacks(
-    params, sequence, term_guard, xrefs, urefs, xic; gauss_newton=true
+    params, sequence, term_guard, xrefs, urefs, xic;
+    gauss_newton=true
 )
-cb_ipopt = SaltedDIRCOL.IpoptCallbacks(cb)
 
 # Solve using Ipopt
 y0 = zeros(params.dims.ny)
