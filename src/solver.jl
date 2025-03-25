@@ -77,7 +77,7 @@ struct SolverCallbacks
         urefs::Vector,
         xic::Vector,
         xgc::Union{Nothing, Vector} = nothing;
-        gauss_newton::Bool = false
+        gauss_newton::Bool = true
     )::SolverCallbacks
         # Enforce transition sequence timing rules
         assert_timings(params, sequence)
