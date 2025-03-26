@@ -77,13 +77,13 @@ function guard_keepout(
 
     # Iterate over each hybrid mode and time step
     for timing = sequence
-        for k = k_start : timing.k-2
+        for k = k_start : timing.k-1
             # Flip the guard to adhere to NLP convention: g(x) <= 0
             c[i] = -timing.transition.guard(y[params.idx.x[k]])
             i += 1
         end
         # Update starting time step; skip time steps with touchdown constraint
-        k_start = timing.k
+        k_start = timing.k + 1
     end
 
     # Evaluate terminal guard residuals over remaining time steps
@@ -108,7 +108,7 @@ function guard_touchdown(
 )::Vector
     c = zeros(eltype(y), length(sequence))
     for (i, timing) in enumerate(sequence)
-        c[i] = timing.transition.guard(y[params.idx.x[timing.k-1]])
+        c[i] = timing.transition.guard(y[params.idx.x[timing.k]])
     end
     return c
 end
