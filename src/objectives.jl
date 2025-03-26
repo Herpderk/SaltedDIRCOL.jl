@@ -14,20 +14,19 @@ function init_quadratic_cost(
     Qs = kron(Nmat, Q)
     Rs = kron(Nmat, R)
     function quadratic_cost(
-        xrefs::RealValue,
-        urefs::RealValue,
-        y::RealValue
-    )::Real
-        # Get stage state errors
-        xs = vcat([y[i] for i = idx.x[1 : end-1]]...)
-        xs_err = xs - xrefs[1 : end-dims.nx]
-        # Get terminal state error
-        xf = y[idx.x[end]]
-        xf_err = xf - xrefs[end-dims.nx+1 : end]
-        # Get stage input errors
-        us = vcat([y[i] for i = idx.u]...)
-        us_err = us - urefs
-        return xs_err'*Qs*xs_err + us_err'*Rs*us_err + xf_err'*Qf*xf_err
+        xrefs::Vector{Float64},
+        urefs::Vector{Float64},
+        y::Vector
+    )::DiffFloat64
+        xs, us = decompose_trajectory(idx, y)
+        xerrs = xs[1 : end-dims.nx] - xrefs[1 : end-dims.nx]
+        xf_err = xs[end-dims.nx+1 : end] - xrefs[end-dims.nx+1 : end]
+        uerrs = us - urefs
+        return (
+            xerrs' * Qs * xerrs
+            + uerrs' * Rs * uerrs
+            + xf_err' * Qf * xf_err
+        )
     end
     return quadratic_cost
 end

@@ -1,4 +1,4 @@
-const RealValue = Union{Real, Vector}
+const DiffFloat64 = Union{Float64, ForwardDiff.Dual}
 
 """
     PrimalDimensions(N, nx, nu, nt)
@@ -17,9 +17,7 @@ struct PrimalDimensions
         nu::Int,
         nt::Int
     )::PrimalDimensions
-        if !(nt in (0, 1))
-            error("Dimension of Δt must be 0 or 1!")
-        end
+        !(nt in (0, 1)) ? error("Dimension of Δt must be 0 or 1!") : nothing
         ny = N*nx + (N-1)*(nu + nt)
         return new(N, nx, nu, nt, ny)
     end
@@ -64,3 +62,48 @@ struct PrimalIndices
     end
 end
 
+"""
+    DualDimensions(ng, nh)
+
+Contains dimensions of the problem constraints/dual variables. The value of ng corresponds to the inequality constraints, while nh is for the equality constraints. The value of nc is the sum of ng and nh.
+"""
+struct DualDimensions
+    ng::Int
+    nh::Int
+    nc::Int
+    function DualDimensions(
+        ng::Int,
+        nh::Int
+    )::DualDimensions
+        nc = ng + nh
+        return new(ng, nh, nc)
+    end
+end
+
+"""
+    SparsityPattern(A)
+
+Contains the number of non-zero values and their row/column coordinates for a given matrix A.
+"""
+struct SparsityPattern
+    nzvals::Int
+    row_coords::Vector{Int}
+    col_coords::Vector{Int}
+    function SparsityPattern(
+        A::Matrix
+    )::SparsityPattern
+        row_idx, col_idx, vals = findnz(sparse(A))
+        return new(length(vals), row_idx, col_idx)
+    end
+end
+
+"""
+"""
+function decompose_trajectory(
+    idx::PrimalIndices,
+    y::Vector
+)::Tuple{Vector, Vector}
+    xs = vcat([y[i] for i = idx.x[1 : end]]...)
+    us = vcat([y[i] for i = idx.u[1 : end]]...)
+    return xs, us
+end
