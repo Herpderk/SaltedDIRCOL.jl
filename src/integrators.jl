@@ -8,7 +8,7 @@ function rk4(
     x0::Vector,
     u0::Vector,
     x1::Vector,
-    Δt::Real
+    Δt::DiffFloat64
 )::Vector
     k1 = dynamics(x0, u0)
     k2 = dynamics(x0 + Δt/2*k1, u0)
@@ -27,7 +27,7 @@ function hermite_simpson(
     x0::Vector,
     u0::Vector,
     x1::Vector,
-    Δt::Real
+    Δt::DiffFloat64
 )::Vector
     f0 = dynamics(x0, u0)
     f1 = dynamics(x1, u0)

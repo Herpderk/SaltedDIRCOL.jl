@@ -9,13 +9,19 @@ function derive_saltation_matrix(
     guard::Function,
     reset::Function
 )::Function
-    g_grad = x -> ForwardDiff.gradient(guard, x)
-    R_jac = x -> ForwardDiff.jacobian(reset, x)
-    salt_mat = (x, u) -> (
-        R_jac(x)
-        + (flow_J(reset(x),u) - R_jac(x) * flow_I(x,u)) * g_grad(x)'
-        / (g_grad(x)' * flow_I(x,u))
-    )
+    function g_grad(x::Vector)
+        return ForwardDiff.gradient(guard, x)
+    end
+    function R_jac(x::Vector)
+        return ForwardDiff.jacobian(reset, x)
+    end
+    function salt_mat(x::Vector, u::Vector)
+        return (
+            R_jac(x)
+            + (flow_J(reset(x),u) - R_jac(x) * flow_I(x,u)) * g_grad(x)'
+            / (g_grad(x)' * flow_I(x,u))
+        )
+    end
     return salt_mat
 end
 

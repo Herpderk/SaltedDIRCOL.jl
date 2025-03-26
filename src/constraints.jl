@@ -7,8 +7,8 @@ function get_primals(
     params::ProblemParameters,
     k::Int,
     y::Vector,
-    Δt::Union{Nothing, Real}
-)::Tuple{Vector, Vector, Vector, Union{Nothing, Real}}
+    Δt::Union{Nothing, Float64}
+)::Tuple{Vector, Vector, Vector, Union{Nothing, DiffFloat64}}
     x0 = y[params.idx.x[k]]
     u0 = y[params.idx.u[k]]
     x1 = y[params.idx.x[k+1]]
@@ -25,7 +25,7 @@ function dynamics_defect(
     params::ProblemParameters,
     sequence::Vector{TransitionTiming},
     y::Vector,
-    Δt::Union{Nothing, Real} = nothing
+    Δt::Union{Nothing, Float64} = nothing
 )::Vector
     # Init defect residuals and time step counter
     c = [zeros(eltype(y), params.dims.nx) for k = 1:params.dims.N-1]

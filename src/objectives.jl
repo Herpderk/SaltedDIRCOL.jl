@@ -14,10 +14,10 @@ function init_quadratic_cost(
     Qs = kron(Nmat, Q)
     Rs = kron(Nmat, R)
     function quadratic_cost(
-        xrefs::Vector,
-        urefs::Vector,
+        xrefs::Vector{Float64},
+        urefs::Vector{Float64},
         y::Vector
-    )::Real
+    )::DiffFloat64
         xs, us = decompose_trajectory(idx, y)
         xerrs = xs[1 : end-dims.nx] - xrefs[1 : end-dims.nx]
         xf_err = xs[end-dims.nx+1 : end] - xrefs[end-dims.nx+1 : end]

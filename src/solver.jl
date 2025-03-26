@@ -8,7 +8,7 @@ struct ProblemParameters
     objective::Function
     dims::PrimalDimensions
     idx::PrimalIndices
-    Δt::Union{Nothing, Real}
+    Δt::Union{Nothing, Float64}
     function ProblemParameters(
         integrator::Function,
         system::HybridSystem,
@@ -16,7 +16,7 @@ struct ProblemParameters
         R::Union{Matrix, Diagonal},
         Qf::Union{Matrix, Diagonal},
         N::Int,
-        Δt::Real = nothing
+        Δt::Union{Nothing, Float64} = nothing
     )::ProblemParameters
         nx = system.nx
         nu = system.nu
@@ -73,10 +73,10 @@ struct SolverCallbacks
         params::ProblemParameters,
         sequence::Vector{TransitionTiming},
         term_guard::Function,
-        xrefs::Vector,
-        urefs::Vector,
-        xic::Vector,
-        xgc::Union{Nothing, Vector} = nothing;
+        xrefs::Vector{Float64},
+        urefs::Vector{Float64},
+        xic::Vector{Float64},
+        xgc::Union{Nothing, Vector{Float64}} = nothing;
         gauss_newton::Bool = true
     )::SolverCallbacks
         # Enforce transition sequence timing rules
@@ -115,7 +115,9 @@ struct SolverCallbacks
         # Autodiff all callbacks
         println("forward-diffing...")
         f_grad = y -> ForwardDiff.gradient(f, y)
-        jacs = [y -> ForwardDiff.jacobian(func, y) for func = (g, h, c)]
+        g_jac = y -> ForwardDiff.jacobian(g, y)
+        h_jac = y -> ForwardDiff.jacobian(h, y)
+        c_jac = y -> ForwardDiff.jacobian(c, y)
         f_hess = y -> ForwardDiff.hessian(f, y)
         if gauss_newton
             Lc_hess = (y, λ) -> zeros(params.dims.ny, params.dims.ny)
@@ -126,12 +128,11 @@ struct SolverCallbacks
         # Get constraint jacobian and Lagrangian hessian sparsity patterns
         println("getting sparsity patterns...")
         λinf = fill(Inf, dims.nc)
-        c_jac = jacs[end]
         c_jac_sp = SparsityPattern(c_jac(yinf))
         L_hess_sp = SparsityPattern(f_hess(yinf) + Lc_hess(yinf, λinf))
         return new(
             f, Lc, g, h, c,
-            f_grad, jacs...,
+            f_grad, g_jac, h_jac, c_jac,
             f_hess, Lc_hess,
             c_jac_sp, L_hess_sp,
             dims, gauss_newton
@@ -155,32 +156,32 @@ struct IpoptCallbacks
         cb::SolverCallbacks
     )::IpoptCallbacks
         function eval_f(        # Objective evaluation
-            x::Vector
+            x::Vector{Float64}
         )::Float64
             return Float64(cb.f(x))
         end
 
         function eval_g(        # Constraint evaluation
-            x::Vector,
-            g::Vector
+            x::Vector{Float64},
+            g::Vector{Float64}
         )::Nothing
             g .= cb.c(x)
             return
         end
 
         function eval_grad_f(   # Objective gradient
-            x::Vector,
-            grad_f::Vector
+            x::Vector{Float64},
+            grad_f::Vector{Float64}
         )::Nothing
             grad_f .= cb.f_grad(x)
             return
         end
 
         function eval_jac_g(    # Constraint jacobian
-            x::Vector,
+            x::Vector{Float64},
             rows::Vector{Cint},
             cols::Vector{Cint},
-            values::Union{Nothing, Vector}
+            values::Union{Nothing, Vector{Float64}}
         )::Nothing
             if isnothing(values)
                 rows .= cb.c_jac_sp.row_coords
@@ -199,12 +200,12 @@ struct IpoptCallbacks
         end
 
         function eval_h(        # Lagrangian hessian
-            x::Vector,
+            x::Vector{Float64},
             rows::Vector{Cint},
             cols::Vector{Cint},
-            obj_factor::Real,
-            lambda::Vector,
-            values::Union{Nothing, Vector}
+            obj_factor::Float64,
+            lambda::Vector{Float64},
+            values::Union{Nothing, Vector{Float64}}
         )::Nothing
             if isnothing(values)
                 rows .= cb.L_hess_sp.row_coords
@@ -232,7 +233,7 @@ Sets up and solves a trajectory optimization using Ipopt given a set of problem 
 function ipopt_solve(
     params::ProblemParameters,
     cb::SolverCallbacks,
-    y0::Vector,
+    y0::Vector{Float64},
     print_level::Int = 5;
     gauss_newton::Bool = true
 )::IpoptProblem

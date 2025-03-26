@@ -1,3 +1,5 @@
+const DiffFloat64 = Union{Float64, ForwardDiff.Dual}
+
 """
     PrimalDimensions(N, nx, nu, nt)
 

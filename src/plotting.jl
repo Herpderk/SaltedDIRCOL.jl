@@ -9,13 +9,13 @@ function plot_2d_trajectory(
     title::String = "System Trajectory",
     xlabel::String = "x",
     ylabel::String = "y",
-    xlim::Tuple{Real, Real} = (0.0, 10.0),
-    ylim::Tuple{Real, Real} = (0.0, 10.0),
+    xlim::Tuple{Float64, Float64} = (0.0, 10.0),
+    ylim::Tuple{Float64, Float64} = (0.0, 10.0),
     markershape::Symbol = :none,
     markercolor::Symbol = :blue,
-    markersize::Real = 2,
+    markersize::Float64 = 2.0,
     linecolor::Symbol = :blue,
-    linewidth::Real = 2
+    linewidth::Float64 = 2.0
 )::Nothing
     for i = vis_state_idx
         !(i in 1:dims.nx) ? error("invalid state index!") : nothing
