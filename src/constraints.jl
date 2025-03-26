@@ -8,11 +8,11 @@ function get_primals(
     k::Int,
     y::Vector,
     Δt::Union{Nothing, Float64}
-)::Tuple{Vector, Vector, Vector, Union{Nothing, DiffFloat64}}
+)::Tuple{Vector, Vector, Vector, DiffFloat64}
     x0 = y[params.idx.x[k]]
     u0 = y[params.idx.u[k]]
     x1 = y[params.idx.x[k+1]]
-    Δt = isnothing(Δt) ? y[params.idx.Δt[k]] : Δt
+    Δt = isnothing(Δt) ? y[params.idx.Δt[k]][1] : Δt
     return x0, u0, x1, Δt
 end
 
@@ -137,4 +137,17 @@ function goal_condition(
     y::Vector
 )::Vector
     return y[params.idx.x[params.dims.N]] - xg
+end
+
+"""
+"""
+function timestep_size(
+    params::ProblemParameters,
+    y::Vector
+)::Vector
+    c = zeros(eltype(y), length(params.idx.Δt))
+    for i = 1 : length(params.idx.Δt)
+        c[i] = params.Δtlb - y[params.idx.Δt[i]][1]
+    end
+    return c
 end

@@ -24,11 +24,11 @@ struct PrimalDimensions
 end
 
 """
-    get_indices(dims, Δstart, Δstop)
+    get_primal_indices(dims, Δstart, Δstop)
 
 Returns a range of indices given the [x, u, h] order of decision variables.
 """
-function get_indices(
+function get_primal_indices(
     dims::PrimalDimensions,
     N::Int,
     Δstart::Int,
@@ -50,11 +50,11 @@ struct PrimalIndices
     function PrimalIndices(
         dims::PrimalDimensions
     )::PrimalIndices
-        x_idx = get_indices(dims, dims.N, 0, 0)
-        u_idx = get_indices(dims, dims.N-1, dims.nx, dims.nu)
+        x_idx = get_primal_indices(dims, dims.N, 0, 0)
+        u_idx = get_primal_indices(dims, dims.N-1, dims.nx, dims.nu)
         if dims.nt == 1
-            Δt_idx = get_indices(
-                dims, dims.N-1, dims.nx+dims.nu, dims.nx+dims.nu+dims.nt)
+            Δt_idx = get_primal_indices(
+                dims, dims.N-1, dims.nx+dims.nu, dims.nu+dims.nt)
         elseif dims.nt == 0
             Δt_idx = nothing
         end

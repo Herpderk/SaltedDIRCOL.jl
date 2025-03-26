@@ -9,22 +9,29 @@ struct ProblemParameters
     dims::PrimalDimensions
     idx::PrimalIndices
     Δt::Union{Nothing, Float64}
+    Δtlb::Union{Nothing, Float64}
     function ProblemParameters(
         integrator::Function,
         system::HybridSystem,
         Q::Union{Matrix, Diagonal},
         R::Union{Matrix, Diagonal},
         Qf::Union{Matrix, Diagonal},
-        N::Int,
-        Δt::Union{Nothing, Float64} = nothing
+        N::Int;
+        Δt::Union{Nothing, Float64} = nothing,
+        Δtlb::Union{Nothing, Float64} = nothing
     )::ProblemParameters
         nx = system.nx
         nu = system.nu
-        nt = isnothing(Δt) ? 1 : 0
+        if isnothing(Δt)
+            nt = 1
+            Δtlb = isnothing(Δt) & isnothing(Δtlb) ? 1e-3 : Δtlb
+        else
+            nt = 0
+        end
         dims = PrimalDimensions(N, nx, nu, nt)
         idx = PrimalIndices(dims)
         obj = init_quadratic_cost(dims, idx, Q, R, Qf)
-        return new(integrator, obj, dims, idx, Δt)
+        return new(integrator, obj, dims, idx, Δt, Δtlb)
     end
 end
 
@@ -87,7 +94,12 @@ struct SolverCallbacks
 
         # Compose inequality constraints
         keepout = y -> guard_keepout(params, sequence, term_guard, y)
-        g = y -> keepout(y)
+        if isnothing(params.idx.Δt)
+            g = y -> keepout(y)
+        else
+            timestep = y -> timestep_size(params, y)
+            g = y -> [keepout(y); timestep(y)]
+        end
 
         # Compose equality constraints
         ic = y -> initial_condition(params, xic, y)

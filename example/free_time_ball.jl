@@ -11,9 +11,9 @@ Q = 1e0 * diagm([1.0, 1.0, 0.0, 0.0])
 R = 1e-6 * I(system.nu)
 Qf = 1e3 * Q
 N = 50
-Δt = 0.01
+Δtlb = 1e-3
 params = SaltedDIRCOL.ProblemParameters(
-    SaltedDIRCOL.hermite_simpson, system, Q, R, Qf, N; Δt
+    SaltedDIRCOL.hermite_simpson, system, Q, R, Qf, N; Δtlb = Δtlb
 )
 
 # Define transition sequence and terminal guard
@@ -39,13 +39,15 @@ cb = SaltedDIRCOL.SolverCallbacks(
 )
 
 # Solve using Ipopt
-y0 = zeros(params.dims.ny)
+#xs = SaltedDIRCOL.roll_out()
+xs = ones(params.dims.ny)
+y0 = [repeat([xgc; 0.0; Δt], N-1); xgc]
 sol = SaltedDIRCOL.ipopt_solve(params, cb, y0)
 
 # Visualize
 SaltedDIRCOL.plot_2d_trajectory(
     params, (1,2), sol.x;
-    xlim = (0, 5),
-    ylim = (0, 10)
+    xlim = (0, 20),
+    ylim = (0, 20)
 )
 nothing

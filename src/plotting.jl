@@ -1,8 +1,7 @@
 """
 """
 function plot_2d_trajectory(
-    idx::PrimalIndices,
-    N::Int,
+    params::ProblemParameters,
     vis_state_idx::Tuple{Int, Int},
     y::Vector;
     animate::Bool = false,
@@ -18,9 +17,12 @@ function plot_2d_trajectory(
     linewidth::Real = 2.0
 )::Nothing
     for i = vis_state_idx
-        !(i in 1:dims.nx) ? error("invalid state index!") : nothing
+        !(i in 1:params.dims.nx) ? error("invalid state index!") : nothing
     end
-    vis_states = [[y[idx.x[k]][vis_state_idx[i]] for k = 1:N] for i = 1:2]
+    vis_states = [
+        [y[params.idx.x[k]][vis_state_idx[i]]
+        for k = 1:params.dims.N] for i = 1:2
+    ]
     if !animate
         plt = plot(
             vis_states...,
