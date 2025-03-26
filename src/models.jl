@@ -4,8 +4,8 @@
 Returns the hybrid system model containing the modes and transitions of a planar (in)elastic bouncing ball.
 """
 function bouncing_ball(
-    e::Float64 = 1.0,
-    g::Float64 = 9.81
+    e::Real = 1.0,
+    g::Real = 9.81
 )::HybridSystem
     # Model ballistic dynamics with thrust
     # State space: x, y, xdot, ydot
