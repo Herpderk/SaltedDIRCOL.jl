@@ -64,9 +64,9 @@ struct SolverCallbacks
     h_jac::Function
     c_jac::Function
     f_hess::Function
-    Lc_hess::Union{Function, Nothing}
+    Lc_hess::Function
     c_jac_sp::SparsityPattern
-    L_hess_sp::Union{SparsityPattern, Nothing}
+    L_hess_sp::SparsityPattern
     dims::DualDimensions
     gauss_newton::Bool
     function SolverCallbacks(
