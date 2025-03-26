@@ -44,7 +44,7 @@ sol = SaltedDIRCOL.ipopt_solve(params, cb, y0)
 
 # Visualize
 SaltedDIRCOL.plot_2d_trajectory(
-    params.dims, params.idx, (1,2), sol.x;
+    params.idx, N, (1,2), sol.x;
     xlim = (0, 5),
     ylim = (0, 10)
 )
