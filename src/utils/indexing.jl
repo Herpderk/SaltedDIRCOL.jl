@@ -1,5 +1,3 @@
-const DiffFloat64 = Union{Float64, ForwardDiff.Dual}
-
 """
     PrimalDimensions(N, nx, nu, nt)
 
@@ -62,6 +60,36 @@ struct PrimalIndices
     end
 end
 
+function compose_trajectory(
+    dims::PrimalDimensions,
+    idx::PrimalIndices,
+    xs::Vector{<:AbstractFloat},
+    us::Vector{<:AbstractFloat}
+)::Vector{<:AbstractFloat}
+    y = zeros(eltype(xs), dims.ny)
+    xcurr = 1 : dims.nx
+    ucurr = 1 : dims.nu
+    for k in 1 : dims.N-1
+        y[idx.x[k]] = xs[xcurr]
+        y[idx.u[k]] = us[ucurr]
+        xcurr = xcurr .+ dims.nx
+        ucurr = ucurr .+ dims.nu
+    end
+    y[idx.x[dims.N]] = xs[xcurr]
+    return y
+end
+
+"""
+"""
+function decompose_trajectory(
+    idx::PrimalIndices,
+    y::Vector{<:AbstractFloat}
+)::Tuple{Vector{<:AbstractFloat}, Vector{<:AbstractFloat}}
+    xs = vcat([y[i] for i = idx.x[1 : end]]...)
+    us = vcat([y[i] for i = idx.u[1 : end]]...)
+    return xs, us
+end
+
 """
     DualDimensions(ng, nh)
 
@@ -95,15 +123,4 @@ struct SparsityPattern
         row_idx, col_idx, vals = findnz(sparse(A))
         return new(length(vals), row_idx, col_idx)
     end
-end
-
-"""
-"""
-function decompose_trajectory(
-    idx::PrimalIndices,
-    y::Vector
-)::Tuple{Vector, Vector}
-    xs = vcat([y[i] for i = idx.x[1 : end]]...)
-    us = vcat([y[i] for i = idx.u[1 : end]]...)
-    return xs, us
 end

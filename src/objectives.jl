@@ -1,32 +1,27 @@
 """
-    init_quadratic_cost(dims, idx, Q, R, Qf, xrefs, urefs)
-
-Returns a quadratic cost function given a set of cost matrices.
 """
-function init_quadratic_cost(
-    dims::PrimalDimensions,
-    idx::PrimalIndices,
-    Q::Union{Matrix, Diagonal},
-    R::Union{Matrix, Diagonal},
-    Qf::Union{Matrix, Diagonal}
-)::Function
-    Nmat = I(dims.N - 1)
-    Qs = kron(Nmat, Q)
-    Rs = kron(Nmat, R)
-    function quadratic_cost(
-        xrefs::Vector{Float64},
-        urefs::Vector{Float64},
-        y::Vector
-    )::DiffFloat64
-        xs, us = decompose_trajectory(idx, y)
-        xerrs = xs[1 : end-dims.nx] - xrefs[1 : end-dims.nx]
-        xf_err = xs[end-dims.nx+1 : end] - xrefs[end-dims.nx+1 : end]
-        uerrs = us - urefs
-        return (
-            xerrs' * Qs * xerrs
-            + uerrs' * Rs * uerrs
-            + xf_err' * Qf * xf_err
+struct TrajectoryCost
+    dims::PrimalDimensions
+    idx::PrimalIndices
+    stage_cost::Function
+    terminal_cost::Function
+end
+
+"""
+"""
+function (params::TrajectoryCost)(
+    yref::Vector{<:AbstractFloat},
+    y::DiffVector
+)::DiffFloat
+    J = 0.0
+    for k in 1 : params.dims.N-1
+        J += params.stage_cost(
+            y[params.idx.x[k]] - yref[params.idx.x[k]],
+            y[params.idx.u[k]] - yref[params.idx.u[k]]
         )
     end
-    return quadratic_cost
+    J += params.terminal_cost(
+        y[params.idx.x[params.dims.N]] - yref[params.idx.x[params.dims.N]]
+    )
+    return J
 end

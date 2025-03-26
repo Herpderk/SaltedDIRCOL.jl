@@ -3,13 +3,13 @@
 function plot_2d_trajectory(
     params::ProblemParameters,
     vis_state_idx::Tuple{Int, Int},
-    y::Vector;
+    y::Vector{<:Real};
     animate::Bool = false,
     title::String = "System Trajectory",
     xlabel::String = "x",
     ylabel::String = "y",
-    xlim::Tuple{Real, Real} = (0.0, 10.0),
-    ylim::Tuple{Real, Real} = (0.0, 10.0),
+    xlim::Tuple{<:Real, <:Real} = (0.0, 10.0),
+    ylim::Tuple{<:Real, <:Real} = (0.0, 10.0),
     markershape::Symbol = :none,
     markercolor::Symbol = :blue,
     markersize::Real = 2.0,
