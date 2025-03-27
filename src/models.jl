@@ -50,7 +50,7 @@ function hopper(
     #   body xdot, body ydot, foot xdot, foot ydot
     nx = 8
     nu = 2
-    M = Diagonal([m1 m1 m2 m2])
+    M = Diagonal([m1; m1; m2; m2])
 
     function get_length_vector(
         x::DiffVector
@@ -86,9 +86,7 @@ function hopper(
         u::DiffVector
     )::DiffVector
         B = control_allocation(x)
-        vdot = gravity + M\(B*u)
-        v = x[5:8]
-        return [v; vdot]
+        return [x[5:8]; gravity + M\(B*u)]
     end
 
     # Define dynamics for each mode

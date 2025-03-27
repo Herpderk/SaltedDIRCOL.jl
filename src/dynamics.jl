@@ -129,16 +129,21 @@ function roll_out(
     x0::Vector{<:AbstractFloat},
     init_transition::Symbol
 )::Vector{<:AbstractFloat}
-    u_idx = [1:system.nu .+ (k-1)*system.nu  for k = 1:N-1]
+    # Init loop variables
+    u_idx = [(1:system.nu) .+ (k-1)*system.nu for k = 1:N-1]
     xs = [zeros(system.nx) for k = 1:N]
     xs[1] = x0
     curr_trans = system.transitions[init_transition]
+
+    # Roll out over time horizon
     for k = 1:N-1
         xk = xs[k]
+        # Reset if guard is hit
         if curr_trans.guard(xk) <= 0.0
             xk = curr_trans.reset(xk)
             curr_trans = curr_trans.next_transition
         end
+        # Integrate smooth dynamics
         xs[k+1] = integrator(curr_trans.flow_I, xk, us[u_idx[k]], Δt)
     end
     return vcat(xs...)

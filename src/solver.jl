@@ -102,7 +102,9 @@ struct SolverCallbacks
         f = y -> params.objective(yref, y)
 
         # Compose inequality constraints
-        gs = [y -> guard_keepout(params, sequence, term_guard, y)]
+        gs = Vector{Function}([
+            y -> guard_keepout(params, sequence, term_guard, y);
+        ])
         if !isnothing(params.system.stage_ineq_constr)
             push!(gs, y -> stage_inequality_constraint(params, y))
         end
@@ -112,11 +114,11 @@ struct SolverCallbacks
         g = y -> vcat([g(y) for g = gs]...)
 
         # Compose equality constraints
-        hs = [
+        hs = Vector{Function}([
             y -> initial_condition(params, xic, y);
             y -> dynamics_defect(params, sequence, y, params.Δt);
             y -> guard_touchdown(params, sequence, y)
-        ]
+        ])
         if !isnothing(xgc)
             push!(hs, y -> goal_condition(params, xgc, y))
         end

@@ -145,7 +145,7 @@ function stage_inequality_constraint(
     params::ProblemParameters,
     y::DiffVector
 )::DiffVector
-    c = [zeros(eltype(y), system.stage_ng) for k = 1 : params.dims.N-1]
+    c = [zeros(eltype(y), params.system.stage_ng) for k = 1 : params.dims.N-1]
     for k = 1 : params.dims.N-1
         xk = y[params.idx.x[k]]
         uk = y[params.idx.u[k]]
