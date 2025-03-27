@@ -11,32 +11,26 @@ function bouncing_ball(
     # State space: x, y, xdot, ydot
     nx = 4
     nu = 1
-    function ballistic_flow(x::Vector, u::Vector)::Vector
-        return [x[3:4]; 0.0; u[1] - g]
-    end
+    ballistic_flow = (x,u) -> [x[3:4]; 0.0; u[1] - g]
 
     # Define apex transition
-    function g_apex(x::Vector)::DiffFloat64
-        return x[4]
-    end
-    function R_apex(x::Vector)::Vector
-        return x
-    end
+    g_apex = x -> x[4]
+    R_apex = x -> x
     apex = Transition(ballistic_flow, ballistic_flow, g_apex, R_apex)
 
     # Define impact transition
-    function g_impact(x::Vector)::DiffFloat64
-        return x[2]
-    end
-    function R_impact(x::Vector)::Vector
-        return [x[1:3]; -e * x[4]]
-    end
+    g_impact = x -> x[2]
+    R_impact = x -> [x[1:3]; -e * x[4]]
     impact = Transition(ballistic_flow, ballistic_flow, g_impact, R_impact)
+
+    # Link transitions
+    apex.next_transition = impact
+    impact.next_transition = apex
 
     # Create hybrid system
     transitions = Dict(
-        "apex" => apex,
-        "impact" => impact
+        :apex => apex,
+        :impact => impact
     )
     return HybridSystem(nx, nu, transitions)
 end

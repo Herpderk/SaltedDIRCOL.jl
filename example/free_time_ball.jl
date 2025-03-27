@@ -15,15 +15,16 @@ terminal = x -> x'*Qf*x
 
 # Define trajopt parameters
 N = 50
-Δt = 0.01
+Δtlb = 0.8e-2
+Δtub = 1.2e-2
 hs = ImplicitIntegrator(:hermite_simpson)
-params = ProblemParameters(hs, system, stage, terminal, N; Δt)
+params = ProblemParameters(hs, system, stage, terminal, N; Δtlb = Δtlb)
 
 # Define transition sequence and terminal guard
 impact = system.transitions[:impact]
 sequence = [
-    TransitionTiming(10, impact),
-    TransitionTiming(20, impact),
+    #TransitionTiming(10, impact),
+    #TransitionTiming(20, impact),
     TransitionTiming(30, impact),
     TransitionTiming(40, impact),
 ]
@@ -41,14 +42,15 @@ cb = SolverCallbacks(
     gauss_newton=true
 )
 
-# Solve using Ipopt
-y0 = zeros(params.dims.ny)
-sol = ipopt_solve(params, cb, y0)
+# Initial guess
+Δt = 0.01
+Δts = fill(Δt, N-1)
+us = urefs
+rk4 = ExplicitIntegrator(:rk4)
+xs = roll_out(rk4, system, N, Δt, us, xic, :impact)
+y0 = compose_trajectory(params.dims, params.idx, xs, us, Δts)
+sol = ipopt_solve(params, cb, y0; max_iter=10000)
 
 # Visualize
-plot_2d_trajectory(
-    params, (1,2), sol.x;
-    xlim = (0, 5),
-    ylim = (0, 10)
-)
+plot_2d_trajectory(params, (1,2), sol.x;)
 nothing

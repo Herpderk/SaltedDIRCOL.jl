@@ -6,9 +6,24 @@ using ForwardDiff
 using Ipopt
 using Plots
 
-include("utils.jl")
+export
+        ProblemParameters,
+        SolverCallbacks,
+        ipopt_solve,
+        ExplicitIntegrator,
+        ImplicitIntegrator,
+        TransitionTiming,
+        plot_2d_trajectory,
+        roll_out,
+        compose_trajectory,
+        decompose_trajectory,
+        bouncing_ball
+
+include("utils/types.jl")
+include("utils/utils.jl")
+include("utils/indexing.jl")
 include("integrators.jl")
-include("hybrid_system.jl")
+include("dynamics.jl")
 include("models.jl")
 include("objectives.jl")
 include("solver.jl")

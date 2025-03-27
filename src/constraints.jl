@@ -6,13 +6,13 @@ Returns a tuple of (decision) variables for computing dynamics defect residuals 
 function get_primals(
     params::ProblemParameters,
     k::Int,
-    y::Vector,
-    Δt::Union{Nothing, Float64}
-)::Tuple{Vector, Vector, Vector, Union{Nothing, DiffFloat64}}
+    y::DiffVector,
+    Δt::Union{Nothing, AbstractFloat}
+)::Tuple{DiffVector, DiffVector, DiffVector, DiffFloat}
     x0 = y[params.idx.x[k]]
     u0 = y[params.idx.u[k]]
     x1 = y[params.idx.x[k+1]]
-    Δt = isnothing(Δt) ? y[params.idx.Δt[k]] : Δt
+    Δt = isnothing(Δt) ? y[params.idx.Δt[k]][1] : Δt
     return x0, u0, x1, Δt
 end
 
@@ -24,9 +24,9 @@ Computes dynamics defect residuals for a given integration scheme and transition
 function dynamics_defect(
     params::ProblemParameters,
     sequence::Vector{TransitionTiming},
-    y::Vector,
-    Δt::Union{Nothing, Float64} = nothing
-)::Vector
+    y::DiffVector,
+    Δt::Union{Nothing, AbstractFloat} = nothing
+)::DiffVector
     # Init defect residuals and time step counter
     c = [zeros(eltype(y), params.dims.nx) for k = 1:params.dims.N-1]
     k_start = 1
@@ -68,8 +68,8 @@ function guard_keepout(
     params::ProblemParameters,
     sequence::Vector{TransitionTiming},
     term_guard::Function,
-    y::Vector
-)::Vector
+    y::DiffVector
+)::DiffVector
     # Init keepout residuals
     c = zeros(eltype(y), params.dims.N - length(sequence))
     k_start = 1
@@ -104,8 +104,8 @@ Computes guard "touchdown" residuals at time steps right before transitions.
 function guard_touchdown(
     params::ProblemParameters,
     sequence::Vector{TransitionTiming},
-    y::Vector
-)::Vector
+    y::DiffVector
+)::DiffVector
     c = zeros(eltype(y), length(sequence))
     for (i, timing) in enumerate(sequence)
         c[i] = timing.transition.guard(y[params.idx.x[timing.k]])
@@ -120,9 +120,9 @@ Computes initial condition residuals.
 """
 function initial_condition(
     params::ProblemParameters,
-    xic::Vector,
-    y::Vector
-)::Vector
+    xic::Vector{<:AbstractFloat},
+    y::DiffVector
+)::DiffVector
     return y[params.idx.x[1]] - xic
 end
 
@@ -133,8 +133,8 @@ Computes goal condition residuals.
 """
 function goal_condition(
     params::ProblemParameters,
-    xg::Vector,
-    y::Vector
-)::Vector
+    xg::Vector{<:AbstractFloat},
+    y::DiffVector
+)::DiffVector
     return y[params.idx.x[params.dims.N]] - xg
 end

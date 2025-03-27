@@ -1,5 +1,3 @@
-const DiffFloat64 = Union{Float64, ForwardDiff.Dual}
-
 """
     PrimalDimensions(N, nx, nu, nt)
 
@@ -24,11 +22,11 @@ struct PrimalDimensions
 end
 
 """
-    get_indices(dims, Δstart, Δstop)
+    get_primal_indices(dims, Δstart, Δstop)
 
 Returns a range of indices given the [x, u, h] order of decision variables.
 """
-function get_indices(
+function get_primal_indices(
     dims::PrimalDimensions,
     N::Int,
     Δstart::Int,
@@ -50,16 +48,60 @@ struct PrimalIndices
     function PrimalIndices(
         dims::PrimalDimensions
     )::PrimalIndices
-        x_idx = get_indices(dims, dims.N, 0, 0)
-        u_idx = get_indices(dims, dims.N-1, dims.nx, dims.nu)
+        x_idx = get_primal_indices(dims, dims.N, 0, 0)
+        u_idx = get_primal_indices(dims, dims.N-1, dims.nx, dims.nu)
         if dims.nt == 1
-            Δt_idx = get_indices(
-                dims, dims.N-1, dims.nx+dims.nu, dims.nx+dims.nu+dims.nt)
+            Δt_idx = get_primal_indices(
+                dims, dims.N-1, dims.nx+dims.nu, dims.nu+dims.nt)
         elseif dims.nt == 0
             Δt_idx = nothing
         end
         return new(x_idx, u_idx, Δt_idx)
     end
+end
+
+function compose_trajectory(
+    dims::PrimalDimensions,
+    idx::PrimalIndices,
+    xs::Vector{<:AbstractFloat},
+    us::Vector{<:AbstractFloat}
+)::Vector{<:AbstractFloat}
+    y = zeros(eltype(xs), dims.ny)
+    xcurr = 1 : dims.nx
+    ucurr = 1 : dims.nu
+    for k in 1 : dims.N-1
+        y[idx.x[k]] = xs[xcurr]
+        y[idx.u[k]] = us[ucurr]
+        xcurr = xcurr .+ dims.nx
+        ucurr = ucurr .+ dims.nu
+    end
+    y[idx.x[dims.N]] = xs[xcurr]
+    return y
+end
+
+function compose_trajectory(
+    dims::PrimalDimensions,
+    idx::PrimalIndices,
+    xs::Vector{<:AbstractFloat},
+    us::Vector{<:AbstractFloat},
+    Δts::Vector{<:AbstractFloat}
+)::Vector{<:AbstractFloat}
+    y = compose_trajectory(dims, idx, xs, us)
+    for k in 1 : dims.N-1
+        y[idx.Δt[k]] = Δts[k:k]
+    end
+    return y
+end
+
+"""
+"""
+function decompose_trajectory(
+    idx::PrimalIndices,
+    y::Vector{<:AbstractFloat}
+)::Tuple{Vector{<:AbstractFloat}, Vector{<:AbstractFloat}}
+    xs = vcat([y[i] for i = idx.x[1 : end]]...)
+    us = vcat([y[i] for i = idx.u[1 : end]]...)
+    return xs, us
 end
 
 """
@@ -95,15 +137,4 @@ struct SparsityPattern
         row_idx, col_idx, vals = findnz(sparse(A))
         return new(length(vals), row_idx, col_idx)
     end
-end
-
-"""
-"""
-function decompose_trajectory(
-    idx::PrimalIndices,
-    y::Vector
-)::Tuple{Vector, Vector}
-    xs = vcat([y[i] for i = idx.x[1 : end]]...)
-    us = vcat([y[i] for i = idx.u[1 : end]]...)
-    return xs, us
 end

@@ -4,27 +4,36 @@
 Contains the parameters for a trajectory optimization problem with an assumed non-time-varying quadratic objective.
 """
 struct ProblemParameters
-    integrator::Function
-    objective::Function
+    integrator::ImplicitIntegrator
+    objective::TrajectoryCost
     dims::PrimalDimensions
     idx::PrimalIndices
-    Δt::Union{Nothing, Float64}
+    Δt::Union{Nothing, AbstractFloat}
+    Δtlb::Union{Nothing, AbstractFloat}
+    Δtub::Union{Nothing, AbstractFloat}
     function ProblemParameters(
-        integrator::Function,
+        integrator::Integrator,
         system::HybridSystem,
-        Q::Union{Matrix, Diagonal},
-        R::Union{Matrix, Diagonal},
-        Qf::Union{Matrix, Diagonal},
-        N::Int,
-        Δt::Union{Nothing, Float64} = nothing
+        stage_cost::Function,
+        terminal_cost::Function,
+        N::Int;
+        Δt::Union{Nothing, AbstractFloat} = nothing,
+        Δtlb::Union{Nothing, AbstractFloat} = nothing,
+        Δtub::Union{Nothing, AbstractFloat} = nothing
     )::ProblemParameters
-        nx = system.nx
-        nu = system.nu
-        nt = isnothing(Δt) ? 1 : 0
-        dims = PrimalDimensions(N, nx, nu, nt)
+        if isnothing(Δt)
+            nt = 1
+            Δtlb = isnothing(Δt) & isnothing(Δtlb) ? 1e-3 : Δtlb
+        else
+            nt = 0
+        end
+        dims = PrimalDimensions(N, system.nx, system.nu, nt)
         idx = PrimalIndices(dims)
-        obj = init_quadratic_cost(dims, idx, Q, R, Qf)
-        return new(integrator, obj, dims, idx, Δt)
+        obj = TrajectoryCost(dims, idx, stage_cost, terminal_cost)
+        if typeof(integrator) == ExplicitIntegrator
+            integrator = ImplicitIntegrator(integrator)
+        end
+        return new(integrator, obj, dims, idx, Δt, Δtlb, Δtub)
     end
 end
 
@@ -64,26 +73,27 @@ struct SolverCallbacks
     h_jac::Function
     c_jac::Function
     f_hess::Function
-    Lc_hess::Union{Function, Nothing}
+    Lc_hess::Function
     c_jac_sp::SparsityPattern
-    L_hess_sp::Union{SparsityPattern, Nothing}
+    L_hess_sp::SparsityPattern
     dims::DualDimensions
     gauss_newton::Bool
     function SolverCallbacks(
         params::ProblemParameters,
         sequence::Vector{TransitionTiming},
         term_guard::Function,
-        xrefs::Vector{Float64},
-        urefs::Vector{Float64},
-        xic::Vector{Float64},
-        xgc::Union{Nothing, Vector{Float64}} = nothing;
-        gauss_newton::Bool = true
+        xrefs::Vector{<:AbstractFloat},
+        urefs::Vector{<:AbstractFloat},
+        xic::Vector{<:AbstractFloat},
+        xgc::Union{Nothing, Vector{<:AbstractFloat}} = nothing;
+        gauss_newton::Bool = false
     )::SolverCallbacks
         # Enforce transition sequence timing rules
         assert_timings(params, sequence)
 
         # Define objective
-        f = y -> params.objective(xrefs, urefs, y)
+        yref = compose_trajectory(params.dims, params.idx, xrefs, urefs)
+        f = y -> params.objective(yref, y)
 
         # Compose inequality constraints
         keepout = y -> guard_keepout(params, sequence, term_guard, y)
@@ -158,7 +168,7 @@ struct IpoptCallbacks
         function eval_f(        # Objective evaluation
             x::Vector{Float64}
         )::Float64
-            return Float64(cb.f(x))
+            return cb.f(x)
         end
 
         function eval_g(        # Constraint evaluation
@@ -233,9 +243,10 @@ Sets up and solves a trajectory optimization using Ipopt given a set of problem 
 function ipopt_solve(
     params::ProblemParameters,
     cb::SolverCallbacks,
-    y0::Vector{Float64},
-    print_level::Int = 5;
-    gauss_newton::Bool = true
+    y0::Vector{<:AbstractFloat};
+    print_level::Int = 5,
+    max_iter::Int = 1000,
+    tol::AbstractFloat = 1e-6
 )::IpoptProblem
     # Define primal and constraint bounds
     cb_ipopt = IpoptCallbacks(cb)
@@ -243,6 +254,18 @@ function ipopt_solve(
     yub = fill(Inf, params.dims.ny)
     clb = [fill(-Inf, cb.dims.ng); zeros(cb.dims.nh)]
     cub = zeros(cb.dims.nc)
+
+    # Add bounds on time steps
+    if !isnothing(params.Δtlb)
+        @simd for k = 1 : params.dims.N-1
+            ylb[params.idx.Δt[k]] .= params.Δtlb
+        end
+    end
+    if !isnothing(params.Δtub)
+        @simd for k = 1 : params.dims.N-1
+            yub[params.idx.Δt[k]] .= params.Δtub
+        end
+    end
 
     # Create Ipopt problem
     prob = Ipopt.CreateIpoptProblem(
@@ -262,10 +285,9 @@ function ipopt_solve(
     )
 
     # Add solver options
-    if gauss_newton | cb.gauss_newton
-        Ipopt.AddIpoptStrOption(prob, "hessian_approximation", "limited-memory")
-    end
     Ipopt.AddIpoptIntOption(prob, "print_level", print_level)
+    Ipopt.AddIpoptIntOption(prob, "max_iter", max_iter)
+    Ipopt.AddIpoptNumOption(prob, "tol", tol)
 
     # Warm-start and solve
     println("starting ipopt...")
