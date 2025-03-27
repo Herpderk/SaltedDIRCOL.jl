@@ -11,17 +11,17 @@ function bouncing_ball(
     # State space: x, y, xdot, ydot
     nx = 4
     nu = 1
-    ballistic_flow = (x,u) -> [x[3:4]; 0.0; u[1] - g]
+    dynamics = (x,u) -> [x[3:4]; 0.0; u[1] - g]
 
     # Define apex transition
     g_apex = x -> x[4]
     R_apex = x -> x
-    apex = Transition(ballistic_flow, ballistic_flow, g_apex, R_apex)
+    apex = Transition(dynamics, dynamics, g_apex, R_apex)
 
     # Define impact transition
     g_impact = x -> x[2]
     R_impact = x -> [x[1:3]; -e * x[4]]
-    impact = Transition(ballistic_flow, ballistic_flow, g_impact, R_impact)
+    impact = Transition(dynamics, dynamics, g_impact, R_impact)
 
     # Link transitions
     apex.next_transition = impact
@@ -41,7 +41,9 @@ function hopper(
     m1::Real = 5.0,    # body mass
     m2::Real = 1.0,    # foot mass
     e::Real = 0.0,     # coefficient of restitution of foot
-    g::Real = 9.81     # acceleration due to gravity
+    g::Real = 9.81,    # acceleration due to gravity
+    Llb::Real = 0.5,
+    Lub::Real = 1.5
 )::HybridSystem
     # State space:
     #   body x, body y, foot x, foot y,
@@ -50,31 +52,34 @@ function hopper(
     nu = 2
     M = Diagonal([m1 m1 m2 m2])
 
-    function get_unit_lengths(
+    function get_length_vector(
         x::DiffVector
-    )::Tuple{DiffVector, DiffVector}
-        r1 = x[1:2]
-        r2 = x[3:4]
-        l1 = (r1[1]-r2[1]) / norm(r1-r2)
-        l2 = (r1[2]-r2[2]) / norm(r1-r2)
-        return (l1, l2)
+    )::DiffVector
+        return x[1:2] - x[3:4]
+    end
+
+    function get_unit_length(
+        x::DiffVector
+    )::DiffVector
+        L = get_length_vector(x)
+        return L / norm(L)
     end
 
     function B_flight(
         x::DiffVector
     )::DiffMatrix
-        l1, l2 = get_unit_lengths(x)
-        return [l1  l2; l2 -l1; -l1 -l2; -l2  l1]
+        L1, L2 = get_unit_length(x)
+        return [L1  L2; L2 -L1; -L1 -L2; -L2  L1]
     end
 
     function B_stance(
         x::DiffVector
     )::DiffMatrix
-        l1, l2 = get_unit_lengths(x)
-        return [l1  l2; l2 -l1; zeros(2,2)]
+        L1, L2 = get_unit_length(x)
+        return [L1  L2; L2 -L1; zeros(2,2)]
     end
 
-    function generalized_flow(
+    function dynamics(
         control_allocation::Function,
         gravity::Vector{<:Real},
         x::DiffVector,
@@ -86,26 +91,35 @@ function hopper(
         return [v; vdot]
     end
 
-    # Define flows
+    # Define dynamics for each mode
     grav_flight = [0; -g; 0; -g]
-    flight_flow = (x,u) -> generalized_flow(B_flight, grav_flight, x, u)
     grav_stance =  [0; -g; 0; 0]
-    stance_flow = (x,u) -> generalized_flow(B_stance, grav_stance, x, u)
+    flight_dynamics = (x,u) -> dynamics(B_flight, grav_flight, x, u)
+    stance_dynamics = (x,u) -> dynamics(B_stance, grav_stance, x, u)
 
     # Define liftoff transition
     g_liftoff = x -> -x[4]              # Flipped vertical position of foot
     R_liftoff = x -> x                  # Identity reset
-    liftoff = Transition(stance_flow, flight_flow, g_liftoff, R_liftoff)
+    liftoff = Transition(stance_dynamics, flight_dynamics, g_liftoff, R_liftoff)
 
     # Define impact transition
     g_impact = x -> x[4]                # Vertical position of foot
     R_impact = x -> [x[1:6]; e*x[7:8]]  # (In)elastic collision
-    impact = Transition(flight_flow, stance_flow, g_impact, R_impact)
+    impact = Transition(flight_dynamics, stance_dynamics, g_impact, R_impact)
+
+    # Link transitions
+    liftoff.next_transition = impact
+    impact.next_transition = liftoff
 
     # Create hybrid system
     transitions = Dict(
         :liftoff => liftoff,
         :impact => impact
     )
-    return HybridSystem(nx, nu, transitions)
+
+    # Define system-specific length constraint functions: g(x) <= 0
+    glb = x -> Llb - norm(get_length_vector(x))
+    gub = x -> -Lub + norm(get_length_vector(x))
+    g = x -> [glb(x); gub(x)]
+    return HybridSystem(nx, nu, transitions; ineq_constr=g)
 end

@@ -68,6 +68,17 @@ struct HybridSystem
     nx::Int
     nu::Int
     transitions::Dict{Symbol, Transition}
+    eq_constr::Union{Nothing, Function}
+    ineq_constr::Union{Nothing, Function}
+    function HybridSystem(
+        nx::Int,
+        nu::Int,
+        transitions::Dict{Symbol, Transition};
+        eq_constr::Union{Nothing, Function} = nothing,
+        ineq_constr::Union{Nothing, Function} = nothing
+    )::HybridSystem
+        return (nx, nu, transitions, eq_constr, ineq_constr)
+    end
 end
 
 """
