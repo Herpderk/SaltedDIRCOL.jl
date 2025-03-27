@@ -138,16 +138,3 @@ function goal_condition(
 )::DiffVector
     return y[params.idx.x[params.dims.N]] - xg
 end
-
-"""
-"""
-function timestep_size(
-    params::ProblemParameters,
-    y::DiffVector
-)::DiffVector
-    c = zeros(eltype(y), length(params.idx.Δt))
-    for i = 1 : length(params.idx.Δt)
-        c[i] = params.Δtlb - y[params.idx.Δt[i]][1]
-    end
-    return c
-end

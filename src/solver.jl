@@ -10,6 +10,7 @@ struct ProblemParameters
     idx::PrimalIndices
     Δt::Union{Nothing, AbstractFloat}
     Δtlb::Union{Nothing, AbstractFloat}
+    Δtub::Union{Nothing, AbstractFloat}
     function ProblemParameters(
         integrator::Integrator,
         system::HybridSystem,
@@ -17,7 +18,8 @@ struct ProblemParameters
         terminal_cost::Function,
         N::Int;
         Δt::Union{Nothing, AbstractFloat} = nothing,
-        Δtlb::Union{Nothing, AbstractFloat} = nothing
+        Δtlb::Union{Nothing, AbstractFloat} = nothing,
+        Δtub::Union{Nothing, AbstractFloat} = nothing
     )::ProblemParameters
         if isnothing(Δt)
             nt = 1
@@ -31,7 +33,7 @@ struct ProblemParameters
         if typeof(integrator) == ExplicitIntegrator
             integrator = ImplicitIntegrator(integrator)
         end
-        return new(integrator, obj, dims, idx, Δt, Δtlb)
+        return new(integrator, obj, dims, idx, Δt, Δtlb, Δtub)
     end
 end
 
@@ -95,12 +97,7 @@ struct SolverCallbacks
 
         # Compose inequality constraints
         keepout = y -> guard_keepout(params, sequence, term_guard, y)
-        if isnothing(params.idx.Δt)
-            g = y -> keepout(y)
-        else
-            timestep = y -> timestep_size(params, y)
-            g = y -> [keepout(y); timestep(y)]
-        end
+        g = y -> keepout(y)
 
         # Compose equality constraints
         ic = y -> initial_condition(params, xic, y)
@@ -247,7 +244,6 @@ function ipopt_solve(
     params::ProblemParameters,
     cb::SolverCallbacks,
     y0::Vector{<:AbstractFloat};
-    gauss_newton::Bool = false,
     print_level::Int = 5,
     max_iter::Int = 1000,
     tol::AbstractFloat = 1e-8
@@ -259,7 +255,17 @@ function ipopt_solve(
     clb = [fill(-Inf, cb.dims.ng); zeros(cb.dims.nh)]
     cub = zeros(cb.dims.nc)
 
-    @show params.dims.ny
+    # Add bounds on time steps
+    if !isnothing(params.Δtlb)
+        @simd for k = 1 : params.dims.N-1
+            ylb[params.idx.Δt[k]][1] = params.Δtlb
+        end
+    end
+    if !isnothing(params.Δtub)
+        @simd for k = 1 : params.dims.N-1
+            yub[params.idx.Δt[k]][1] = params.Δtub
+        end
+    end
 
     # Create Ipopt problem
     prob = Ipopt.CreateIpoptProblem(
@@ -279,9 +285,6 @@ function ipopt_solve(
     )
 
     # Add solver options
-    if gauss_newton | cb.gauss_newton
-        Ipopt.AddIpoptStrOption(prob, "hessian_approximation", "limited-memory")
-    end
     Ipopt.AddIpoptIntOption(prob, "print_level", print_level)
     Ipopt.AddIpoptIntOption(prob, "max_iter", max_iter)
     Ipopt.AddIpoptNumOption(prob, "tol", tol)

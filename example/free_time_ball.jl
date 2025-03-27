@@ -15,7 +15,8 @@ terminal = x -> x'*Qf*x
 
 # Define trajopt parameters
 N = 50
-Δtlb = 1e-3
+Δtlb = 0.8e-2
+Δtub = 1.2e-2
 hs = ImplicitIntegrator(:hermite_simpson)
 params = ProblemParameters(hs, system, stage, terminal, N; Δtlb = Δtlb)
 
@@ -38,7 +39,7 @@ urefs = zeros((N-1) * system.nu)
 # Define solver callbacks
 cb = SolverCallbacks(
     params, sequence, term_guard, xrefs, urefs, xic;
-    gauss_newton=false
+    gauss_newton=true
 )
 
 # Initial guess
@@ -48,7 +49,7 @@ us = urefs
 rk4 = ExplicitIntegrator(:rk4)
 xs = roll_out(rk4, system, N, Δt, us, xic, :impact)
 y0 = compose_trajectory(params.dims, params.idx, xs, us, Δts)
-sol = ipopt_solve(params, cb, y0; max_iter=50000, gauss_newton=true)
+sol = ipopt_solve(params, cb, y0; max_iter=10000)
 
 # Visualize
 plot_2d_trajectory(params, (1,2), sol.x;)
