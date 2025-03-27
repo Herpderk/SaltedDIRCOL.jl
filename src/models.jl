@@ -39,8 +39,8 @@ function bouncing_ball(
 
     # Create hybrid system
     transitions = Dict(
-        "apex" => apex,
-        "impact" => impact
+        :apex => apex,
+        :impact => impact
     )
     return HybridSystem(nx, nu, transitions)
 end

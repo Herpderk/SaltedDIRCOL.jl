@@ -20,7 +20,7 @@ hs = ImplicitIntegrator(:hermite_simpson)
 params = ProblemParameters(hs, system, stage, terminal, N; Δt)
 
 # Define transition sequence and terminal guard
-impact = system.transitions["impact"]
+impact = system.transitions[:impact]
 sequence = [
     TransitionTiming(10, impact),
     TransitionTiming(20, impact),

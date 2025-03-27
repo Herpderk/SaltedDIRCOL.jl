@@ -79,6 +79,20 @@ function compose_trajectory(
     return y
 end
 
+function compose_trajectory(
+    dims::PrimalDimensions,
+    idx::PrimalIndices,
+    xs::Vector{<:AbstractFloat},
+    us::Vector{<:AbstractFloat},
+    Δts::Vector{<:AbstractFloat}
+)::Vector{<:AbstractFloat}
+    y = compose_trajectory(dims, idx, xs, us)
+    for k in 1 : dims.N-1
+        y[idx.Δt[k]] = Δts[k:k]
+    end
+    return y
+end
+
 """
 """
 function decompose_trajectory(

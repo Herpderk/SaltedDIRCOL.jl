@@ -67,31 +67,31 @@ Contains all hybrid system objects in addition to the system's state and input d
 struct HybridSystem
     nx::Int
     nu::Int
-    transitions::Dict{String, Transition}
+    transitions::Dict{Symbol, Transition}
 end
 
 """
 """
 function roll_out(
-    integrator::Function,
+    integrator::ExplicitIntegrator,
     system::HybridSystem,
     N::Int,
     Δt::AbstractFloat,
     us::Vector{<:AbstractFloat},
     x0::Vector{<:AbstractFloat},
-    init_transition::String
+    init_transition::Symbol
 )::Vector{<:AbstractFloat}
-    u_idx = [1:nu .+ (k-1)*nu  for k = 1:N-1]
+    u_idx = [1:system.nu .+ (k-1)*system.nu  for k = 1:N-1]
     xs = [zeros(system.nx) for k = 1:N]
     xs[1] = x0
-    curr_trans = system[init_transition]
+    curr_trans = system.transitions[init_transition]
     for k = 1:N-1
         xk = xs[k]
         if curr_trans.guard(xk) <= 0.0
             xk = curr_trans.reset(xk)
             curr_trans = curr_trans.next_transition
         end
-        xs[k+1] = integrator(curr_trans.flow_I, xk, us[u_idk[k]])
+        xs[k+1] = integrator(curr_trans.flow_I, xk, us[u_idx[k]], Δt)
     end
     return vcat(xs...)
 end
