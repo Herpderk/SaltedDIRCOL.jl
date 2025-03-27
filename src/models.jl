@@ -50,18 +50,6 @@ function hopper(
     nu = 2
     M = Diagonal([m1 m1 m2 m2])
 
-    function generalized_flow(
-        control_allocation::Function,
-        gravity::Vector{<:Real},
-        x::DiffVector,
-        u::DiffVector
-    )::DiffVector
-        v = x[5:8]
-        B = control_allocation(x)
-        vdot = gravity + M\(B*u)
-        return [v; vdot]
-    end
-
     function get_unit_lengths(
         x::DiffVector
     )::Tuple{DiffVector, DiffVector}
@@ -84,6 +72,18 @@ function hopper(
     )::DiffMatrix
         l1, l2 = get_unit_lengths(x)
         return [l1  l2; l2 -l1; zeros(2,2)]
+    end
+
+    function generalized_flow(
+        control_allocation::Function,
+        gravity::Vector{<:Real},
+        x::DiffVector,
+        u::DiffVector
+    )::DiffVector
+        B = control_allocation(x)
+        vdot = gravity + M\(B*u)
+        v = x[5:8]
+        return [v; vdot]
     end
 
     # Define flows
