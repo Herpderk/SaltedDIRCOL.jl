@@ -44,8 +44,8 @@ function hopper(
     g::Real = 9.81     # acceleration due to gravity
 )::HybridSystem
     # State space:
-    # body x, body y, foot x, foot y,
-    # body xdot, body ydot, foot xdot, foot ydot
+    #   body x, body y, foot x, foot y,
+    #   body xdot, body ydot, foot xdot, foot ydot
     nx = 8
     nu = 2
     M = Diagonal([m1 m1 m2 m2])
@@ -93,13 +93,13 @@ function hopper(
     stance_flow = (x,u) -> generalized_flow(B_stance, grav_stance, x, u)
 
     # Define liftoff transition
-    g_liftoff = x -> -x[4]      # Flipped vertical position of foot
-    R_liftoff = x -> x          # Identity reset
+    g_liftoff = x -> -x[4]              # Flipped vertical position of foot
+    R_liftoff = x -> x                  # Identity reset
     liftoff = Transition(stance_flow, flight_flow, g_liftoff, R_liftoff)
 
     # Define impact transition
-    g_impact = x -> x[4]     # Vertical position of foot
-    R_impact = x -> [x[1:6]; e*x[7:8]]
+    g_impact = x -> x[4]                # Vertical position of foot
+    R_impact = x -> [x[1:6]; e*x[7:8]]  # (In)elastic collision
     impact = Transition(flight_flow, stance_flow, g_impact, R_impact)
 
     # Create hybrid system
