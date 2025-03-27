@@ -117,9 +117,15 @@ function hopper(
         :impact => impact
     )
 
-    # Define system-specific length constraint functions: g(x) <= 0
+    # Define length inequality constraint functions
     glb = x -> Llb - norm(get_length_vector(x))
     gub = x -> -Lub + norm(get_length_vector(x))
     g = x -> [glb(x); gub(x)]
-    return HybridSystem(nx, nu, transitions; ineq_constr=g)
+    g_stage = (x, u) -> g(x)
+    g_term = x -> g(x)
+
+    return HybridSystem(
+        nx, nu, transitions;
+        stage_ineq_constr=g_stage, term_ineq_constr=g_term
+    )
 end

@@ -1,9 +1,13 @@
 """
-    ProblemParameters(integrator, system, Q, R, Qf, N, Δt)
+    ProblemParameters(
+        system, integrator, stage_cost, terminal_cost, N;
+        Δt=nothing, Δtlb=nothing, Δtub=nothing
+    )
 
 Contains the parameters for a trajectory optimization problem with an assumed non-time-varying quadratic objective.
 """
 struct ProblemParameters
+    system::HybridSystem
     integrator::ImplicitIntegrator
     objective::TrajectoryCost
     dims::PrimalDimensions
@@ -12,8 +16,8 @@ struct ProblemParameters
     Δtlb::Union{Nothing, AbstractFloat}
     Δtub::Union{Nothing, AbstractFloat}
     function ProblemParameters(
-        integrator::Integrator,
         system::HybridSystem,
+        integrator::Integrator,
         stage_cost::Function,
         terminal_cost::Function,
         N::Int;
@@ -27,13 +31,15 @@ struct ProblemParameters
         else
             nt = 0
         end
+
         dims = PrimalDimensions(N, system.nx, system.nu, nt)
         idx = PrimalIndices(dims)
         obj = TrajectoryCost(dims, idx, stage_cost, terminal_cost)
+
         if typeof(integrator) == ExplicitIntegrator
             integrator = ImplicitIntegrator(integrator)
         end
-        return new(integrator, obj, dims, idx, Δt, Δtlb, Δtub)
+        return new(system, integrator, obj, dims, idx, Δt, Δtlb, Δtub)
     end
 end
 
@@ -96,19 +102,31 @@ struct SolverCallbacks
         f = y -> params.objective(yref, y)
 
         # Compose inequality constraints
-        keepout = y -> guard_keepout(params, sequence, term_guard, y)
-        g = y -> keepout(y)
+        gs = [y -> guard_keepout(params, sequence, term_guard, y)]
+        if !isnothing(params.system.stage_ineq_constr)
+            push!(gs, y -> stage_inequality_constraint(params, y))
+        end
+        if !isnothing(params.system.term_ineq_constr)
+            push!(gs, y -> terminal_inequality_constraint(params, y))
+        end
+        g = y -> vcat([g(y) for g = gs]...)
 
         # Compose equality constraints
-        ic = y -> initial_condition(params, xic, y)
-        defect = y -> dynamics_defect(params, sequence, y, params.Δt)
-        touchdown = y -> guard_touchdown(params, sequence, y)
-        if isnothing(xgc)
-            h = y -> [ic(y); defect(y); touchdown(y)]
-        else
-            gc = y -> goal_condition(params, xgc, y)
-            h = y -> [ic(y); defect(y); touchdown(y); gc(y)]
+        hs = [
+            y -> initial_condition(params, xic, y);
+            y -> dynamics_defect(params, sequence, y, params.Δt);
+            y -> guard_touchdown(params, sequence, y)
+        ]
+        if !isnothing(xgc)
+            push!(hs, y -> goal_condition(params, xgc, y))
         end
+        if !isnothing(params.system.stage_eq_constr)
+            push!(hs, y -> stage_equality_constraint(params, y))
+        end
+        if !isnothing(params.system.term_eq_constr)
+            push!(hs, y -> terminal_equality_constraint(params, y))
+        end
+        h = y -> vcat([h(y) for h = hs]...)
 
         # Compose all constraints
         c = y -> [g(y); h(y)]

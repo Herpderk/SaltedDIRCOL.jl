@@ -138,3 +138,51 @@ function goal_condition(
 )::DiffVector
     return y[params.idx.x[params.dims.N]] - xg
 end
+
+"""
+"""
+function stage_inequality_constraint(
+    params::ProblemParameters,
+    y::DiffVector
+)::DiffVector
+    c = [zeros(eltype(y), system.stage_ng) for k = 1 : params.dims.N-1]
+    for k = 1 : params.dims.N-1
+        xk = y[params.idx.x[k]]
+        uk = y[params.idx.u[k]]
+        c[k] = params.system.stage_ineq_constr(xk, uk)
+    end
+    return vcat(c...)
+end
+
+"""
+"""
+function stage_equality_constraint(
+    params::ProblemParameters,
+    y::DiffVector
+)::DiffVector
+    c = [zeros(eltype(y), system.stage_nh) for k = 1 : params.dims.N-1]
+    for k = 1 : params.dims.N-1
+        xk = params.idx.x[k]
+        uk = params.idx.u[k]
+        c[k] = params.system.stage_eq_constr(xk, uk)
+    end
+    return vcat(c...)
+end
+
+"""
+"""
+function terminal_inequality_constraint(
+    params::ProblemParameters,
+    y::DiffVector
+)::DiffVector
+    return params.system.term_ineq_constr(y[params.idx.x[params.dims.N]])
+end
+
+"""
+"""
+function terminal_equality_constraint(
+    params::ProblemParameters,
+    y::DiffVector
+)::DiffVector
+    return params.system.term_eq_constr(y[params.idx.x[params.dims.N]])
+end
