@@ -84,7 +84,7 @@ struct SolverCallbacks
         urefs::Vector{<:AbstractFloat},
         xic::Vector{<:AbstractFloat},
         xgc::Union{Nothing, Vector{<:AbstractFloat}} = nothing;
-        gauss_newton::Bool = true
+        gauss_newton::Bool = false
     )::SolverCallbacks
         # Enforce transition sequence timing rules
         assert_timings(params, sequence)
@@ -247,7 +247,7 @@ function ipopt_solve(
     params::ProblemParameters,
     cb::SolverCallbacks,
     y0::Vector{<:AbstractFloat};
-    gauss_newton::Bool = true,
+    gauss_newton::Bool = false,
     print_level::Int = 5,
     max_iter::Int = 1000,
     tol::AbstractFloat = 1e-8
