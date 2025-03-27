@@ -246,7 +246,7 @@ function ipopt_solve(
     y0::Vector{<:AbstractFloat};
     print_level::Int = 5,
     max_iter::Int = 1000,
-    tol::AbstractFloat = 1e-8
+    tol::AbstractFloat = 1e-6
 )::IpoptProblem
     # Define primal and constraint bounds
     cb_ipopt = IpoptCallbacks(cb)
@@ -258,12 +258,12 @@ function ipopt_solve(
     # Add bounds on time steps
     if !isnothing(params.Δtlb)
         @simd for k = 1 : params.dims.N-1
-            ylb[params.idx.Δt[k]][1] = params.Δtlb
+            ylb[params.idx.Δt[k]] .= params.Δtlb
         end
     end
     if !isnothing(params.Δtub)
         @simd for k = 1 : params.dims.N-1
-            yub[params.idx.Δt[k]][1] = params.Δtub
+            yub[params.idx.Δt[k]] .= params.Δtub
         end
     end
 
