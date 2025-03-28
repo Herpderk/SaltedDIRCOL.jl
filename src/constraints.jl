@@ -6,9 +6,9 @@ Returns a tuple of (decision) variables for computing dynamics defect residuals 
 function get_primals(
     params::ProblemParameters,
     k::Int,
-    y::DiffVector,
+    y::Vector{<:DiffFloat},
     Δt::Union{Nothing, AbstractFloat}
-)::Tuple{DiffVector, DiffVector, DiffVector, DiffFloat}
+)::Tuple{Vector{<:DiffFloat}, Vector{<:DiffFloat}, Vector{<:DiffFloat}, DiffFloat}
     x0 = y[params.idx.x[k]]
     u0 = y[params.idx.u[k]]
     x1 = y[params.idx.x[k+1]]
@@ -24,9 +24,9 @@ Computes dynamics defect residuals for a given integration scheme and transition
 function dynamics_defect(
     params::ProblemParameters,
     sequence::Vector{TransitionTiming},
-    y::DiffVector,
+    y::Vector{<:DiffFloat},
     Δt::Union{Nothing, AbstractFloat} = nothing
-)::DiffVector
+)::Vector{<:DiffFloat}
     # Init defect residuals and time step counter
     c = [zeros(eltype(y), params.dims.nx) for k = 1:params.dims.N-1]
     k_start = 1
@@ -68,8 +68,8 @@ function guard_keepout(
     params::ProblemParameters,
     sequence::Vector{TransitionTiming},
     term_guard::Function,
-    y::DiffVector
-)::DiffVector
+    y::Vector{<:DiffFloat}
+)::Vector{<:DiffFloat}
     # Init keepout residuals
     c = zeros(eltype(y), params.dims.N - length(sequence))
     k_start = 1
@@ -104,8 +104,8 @@ Computes guard "touchdown" residuals at time steps right before transitions.
 function guard_touchdown(
     params::ProblemParameters,
     sequence::Vector{TransitionTiming},
-    y::DiffVector
-)::DiffVector
+    y::Vector{<:DiffFloat}
+)::Vector{<:DiffFloat}
     c = zeros(eltype(y), length(sequence))
     for (i, timing) in enumerate(sequence)
         c[i] = timing.transition.guard(y[params.idx.x[timing.k]])
@@ -121,8 +121,8 @@ Computes initial condition residuals.
 function initial_condition(
     params::ProblemParameters,
     xic::Vector{<:AbstractFloat},
-    y::DiffVector
-)::DiffVector
+    y::Vector{<:DiffFloat}
+)::Vector{<:DiffFloat}
     return y[params.idx.x[1]] - xic
 end
 
@@ -134,7 +134,55 @@ Computes goal condition residuals.
 function goal_condition(
     params::ProblemParameters,
     xg::Vector{<:AbstractFloat},
-    y::DiffVector
-)::DiffVector
+    y::Vector{<:DiffFloat}
+)::Vector{<:DiffFloat}
     return y[params.idx.x[params.dims.N]] - xg
+end
+
+"""
+"""
+function stage_inequality_constraint(
+    params::ProblemParameters,
+    y::Vector{<:DiffFloat}
+)::Vector{<:DiffFloat}
+    c = [zeros(eltype(y), params.system.stage_ng) for k = 1 : params.dims.N-1]
+    for k = 1 : params.dims.N-1
+        xk = y[params.idx.x[k]]
+        uk = y[params.idx.u[k]]
+        c[k] = params.system.stage_ineq_constr(xk, uk)
+    end
+    return vcat(c...)
+end
+
+"""
+"""
+function stage_equality_constraint(
+    params::ProblemParameters,
+    y::Vector{<:DiffFloat}
+)::Vector{<:DiffFloat}
+    c = [zeros(eltype(y), system.stage_nh) for k = 1 : params.dims.N-1]
+    for k = 1 : params.dims.N-1
+        xk = params.idx.x[k]
+        uk = params.idx.u[k]
+        c[k] = params.system.stage_eq_constr(xk, uk)
+    end
+    return vcat(c...)
+end
+
+"""
+"""
+function terminal_inequality_constraint(
+    params::ProblemParameters,
+    y::Vector{<:DiffFloat}
+)::Vector{<:DiffFloat}
+    return params.system.term_ineq_constr(y[params.idx.x[params.dims.N]])
+end
+
+"""
+"""
+function terminal_equality_constraint(
+    params::ProblemParameters,
+    y::Vector{<:DiffFloat}
+)::Vector{<:DiffFloat}
+    return params.system.term_eq_constr(y[params.idx.x[params.dims.N]])
 end

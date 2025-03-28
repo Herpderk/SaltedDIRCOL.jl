@@ -11,7 +11,7 @@ end
 """
 function (params::TrajectoryCost)(
     yref::Vector{<:AbstractFloat},
-    y::DiffVector
+    y::Vector{<:DiffFloat}
 )::DiffFloat
     J = 0.0
     for k in 1 : params.dims.N-1

@@ -17,7 +17,7 @@ terminal = x -> x'*Qf*x
 N = 50
 Δt = 0.01
 hs = ImplicitIntegrator(:hermite_simpson)
-params = ProblemParameters(hs, system, stage, terminal, N; Δt)
+params = ProblemParameters(system, hs, stage, terminal, N; Δt)
 
 # Define transition sequence and terminal guard
 impact = system.transitions[:impact]
