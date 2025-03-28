@@ -92,17 +92,23 @@ function hopper(
     # Define dynamics for each mode
     grav_flight = [0; -g; 0; -g]
     grav_stance =  [0; -g; 0; 0]
-    flight_dynamics = (x,u) -> dynamics(B_flight, grav_flight, x, u)
-    stance_dynamics = (x,u) -> dynamics(B_stance, grav_stance, x, u)
+    flight_dynamics = (
+        x::Vector{<:DiffFloat},
+        u::Vector{<:DiffFloat}
+    ) -> dynamics(B_flight, grav_flight, x, u)
+    stance_dynamics = (
+        x::Vector{<:DiffFloat},
+        u::Vector{<:DiffFloat}
+    ) -> dynamics(B_stance, grav_stance, x, u)
 
     # Define liftoff transition
-    g_liftoff = x -> -x[4]              # Flipped vertical position of foot
-    R_liftoff = x -> x                  # Identity reset
+    g_liftoff = x::Vector{<:DiffFloat} -> -x[4]
+    R_liftoff = x::Vector{<:DiffFloat} -> x
     liftoff = Transition(stance_dynamics, flight_dynamics, g_liftoff, R_liftoff)
 
     # Define impact transition
-    g_impact = x -> x[4]                # Vertical position of foot
-    R_impact = x -> [x[1:6]; e*x[7:8]]  # (In)elastic collision
+    g_impact = x::Vector{<:DiffFloat} -> x[4]
+    R_impact = x::Vector{<:DiffFloat} -> [x[1:6]; e * x[7:8]]
     impact = Transition(flight_dynamics, stance_dynamics, g_impact, R_impact)
 
     # Link transitions
@@ -116,11 +122,11 @@ function hopper(
     )
 
     # Define length inequality constraint functions
-    glb = x -> Llb - norm(get_length_vector(x))
-    gub = x -> -Lub + norm(get_length_vector(x))
-    g = x -> [glb(x); gub(x)]
-    g_stage = (x, u) -> g(x)
-    g_term = x -> g(x)
+    glb = x::Vector{<:DiffFloat} -> Llb - norm(get_length_vector(x))
+    gub = x::Vector{<:DiffFloat} -> -Lub + norm(get_length_vector(x))
+    g = x::Vector{<:DiffFloat} -> [glb(x); gub(x)]
+    g_stage = (x::Vector{<:DiffFloat}, u::Vector{<:DiffFloat}) -> g(x)
+    g_term = x::Vector{<:DiffFloat} -> g(x)
 
     return HybridSystem(
         nx, nu, transitions;
