@@ -1,28 +1,27 @@
 """
-    derive_saltation_matrix(flow_I, flow_J, guard, reset)
+    SaltationMatrix(flow_I, flow_J, guard, reset)
 
 Derives the saltation matrix function for a given hybrid transition.
 """
-function derive_saltation_matrix(
-    flow_I::Function,
-    flow_J::Function,
-    guard::Function,
+struct SaltationMatrix
+    flow_I::Function
+    flow_J::Function
+    guard::Function
     reset::Function
-)::Function
-    function g_grad(x::DiffVector)
-        return ForwardDiff.gradient(guard, x)
-    end
-    function R_jac(x::DiffVector)
-        return ForwardDiff.jacobian(reset, x)
-    end
-    function salt_mat(x::DiffVector, u::DiffVector)
-        return (
-            R_jac(x)
-            + (flow_J(reset(x),u) - R_jac(x) * flow_I(x,u)) * g_grad(x)'
-            / (g_grad(x)' * flow_I(x,u))
-        )
-    end
-    return salt_mat
+end
+
+function (transition::SaltationMatrix)(
+    x::DiffVector,
+    u::DiffVector
+)::DiffMatrix
+    xJ = transition.reset(x)
+    g_grad = ForwardDiff.gradient(transition.guard, x)
+    R_jac = ForwardDiff.jacobian(transition.reset, x)
+    return (
+        R_jac
+        + (transition.flow_J(xJ, u) - R_jac * transition.flow_I(x, u))
+        * g_grad' / (g_grad' * transition.flow_I(x,u))
+    )
 end
 
 """
@@ -35,7 +34,7 @@ mutable struct Transition
     flow_J::Function
     guard::Function
     reset::Function
-    saltation::Function
+    saltation::SaltationMatrix
     next_transition::Union{Nothing, Transition}
     function Transition(
         flow_I::Function,
@@ -44,8 +43,8 @@ mutable struct Transition
         reset::Function,
         next_transition::Union{Nothing, Transition} = nothing
     )::Transition
-        salt_expr = derive_saltation_matrix(flow_I, flow_J, guard, reset)
-        return new(flow_I, flow_J, guard, reset, salt_expr, next_transition)
+        saltation = SaltationMatrix(flow_I, flow_J, guard, reset)
+        return new(flow_I, flow_J, guard, reset, saltation, next_transition)
     end
 end
 
