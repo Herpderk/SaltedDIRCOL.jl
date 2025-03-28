@@ -1,5 +1,5 @@
 module Explicit
-    using ..SaltedDIRCOL: DiffFloat, DiffVector
+    using ..SaltedDIRCOL: DiffFloat
 
     """
         rk4(dynamics, x0, u0, x1, Δt)
@@ -8,10 +8,10 @@ module Explicit
     """
     function rk4(
         dynamics::Function,
-        x0::DiffVector,
-        u0::DiffVector,
+        x0::Vector{<:DiffFloat},
+        u0::Vector{<:DiffFloat},
         Δt::DiffFloat
-    )::DiffVector
+    )::Vector{<:DiffFloat}
         k1 = dynamics(x0, u0)
         k2 = dynamics(x0 + Δt/2*k1, u0)
         k3 = dynamics(x0 + Δt/2*k2, u0)
@@ -22,7 +22,7 @@ end
 
 
 module Implicit
-    using ..SaltedDIRCOL: DiffFloat, DiffVector
+    using ..SaltedDIRCOL: DiffFloat
 
     """
         hermite_simpson(dynamics, x0, u0, x1, Δt)
@@ -31,11 +31,11 @@ module Implicit
     """
     function hermite_simpson(
         dynamics::Function,
-        x0::DiffVector,
-        u0::DiffVector,
-        x1::DiffVector,
+        x0::Vector{<:DiffFloat},
+        u0::Vector{<:DiffFloat},
+        x1::Vector{<:DiffFloat},
         Δt::DiffFloat
-    )::DiffVector
+    )::Vector{<:DiffFloat}
         f0 = dynamics(x0, u0)
         f1 = dynamics(x1, u0)
         xc = 1/2*(x0 + x1) + Δt/8*(f0 - f1)
@@ -65,9 +65,9 @@ ImplicitIntegrator(method_name::Symbol) = ImplicitIntegrator(
 ImplicitIntegrator(explicit::ExplicitIntegrator) = ImplicitIntegrator(
     (
         dynamics::Function,
-        x0::DiffVector,
-        u0::DiffVector,
-        x1::DiffVector,
+        x0::Vector{<:DiffFloat},
+        u0::Vector{<:DiffFloat},
+        x1::Vector{<:DiffFloat},
         Δt::AbstractFloat
     ) -> explicit(dynamics, x0, u0, Δt) - x1
 )
@@ -78,7 +78,7 @@ const Integrator = Union{ExplicitIntegrator, ImplicitIntegrator}
 """
 function (integrator::Integrator)(
     dynamics::Function,
-    primals::Vararg{Union{DiffVector, DiffFloat}}
-)::DiffVector
+    primals::Vararg{Union{Vector{<:DiffFloat}, DiffFloat}}
+)::Vector{<:DiffFloat}
     return integrator.method(dynamics, primals...)
 end

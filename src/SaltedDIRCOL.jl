@@ -20,9 +20,8 @@ export
         bouncing_ball,
         hopper
 
-include("utils/types.jl")
-include("utils/utils.jl")
-include("utils/indexing.jl")
+include("utils.jl")
+include("indexing.jl")
 include("integrators.jl")
 include("dynamics.jl")
 include("models.jl")

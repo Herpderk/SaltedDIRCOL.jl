@@ -1,3 +1,5 @@
+const DiffFloat = Union{AbstractFloat, ForwardDiff.Dual}
+
 """
 """
 function get_module_function_names(

@@ -11,9 +11,9 @@ struct SaltationMatrix
 end
 
 function (transition::SaltationMatrix)(
-    x::DiffVector,
-    u::DiffVector
-)::DiffMatrix
+    x::Vector{<:DiffFloat},
+    u::Vector{<:DiffFloat}
+)::Matrix{<:DiffFloat}
     xJ = transition.reset(x)
     g_grad = ForwardDiff.gradient(transition.guard, x)
     R_jac = ForwardDiff.jacobian(transition.reset, x)

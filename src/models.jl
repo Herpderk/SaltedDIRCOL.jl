@@ -11,16 +11,16 @@ function bouncing_ball(
     # State space: x, y, xdot, ydot
     nx = 4
     nu = 1
-    dynamics = (x::DiffVector, u::DiffVector) -> [x[3:4]; 0.0; u[1] - g]
+    dynamics = (x::Vector{<:DiffFloat}, u::Vector{<:DiffFloat}) -> [x[3:4]; 0.0; u[1] - g]
 
     # Define apex transition
-    g_apex = x::DiffVector -> x[4]
-    R_apex = x::DiffVector -> x
+    g_apex = x::Vector{<:DiffFloat} -> x[4]
+    R_apex = x::Vector{<:DiffFloat} -> x
     apex = Transition(dynamics, dynamics, g_apex, R_apex)
 
     # Define impact transition
-    g_impact = x::DiffVector -> x[2]
-    R_impact = x::DiffVector -> [x[1:3]; -e * x[4]]
+    g_impact = x::Vector{<:DiffFloat} -> x[2]
+    R_impact = x::Vector{<:DiffFloat} -> [x[1:3]; -e * x[4]]
     impact = Transition(dynamics, dynamics, g_impact, R_impact)
 
     # Link transitions
@@ -53,28 +53,28 @@ function hopper(
     M = Diagonal([m1; m1; m2; m2])
 
     function get_length_vector(
-        x::DiffVector
-    )::DiffVector
+        x::Vector{<:DiffFloat}
+    )::Vector{<:DiffFloat}
         return x[1:2] - x[3:4]
     end
 
     function get_unit_length(
-        x::DiffVector
-    )::DiffVector
+        x::Vector{<:DiffFloat}
+    )::Vector{<:DiffFloat}
         L = get_length_vector(x)
         return L / norm(L)
     end
 
     function B_flight(
-        x::DiffVector
-    )::DiffMatrix
+        x::Vector{<:DiffFloat}
+    )::Matrix{<:DiffFloat}
         L1, L2 = get_unit_length(x)
         return [L1  L2; L2 -L1; -L1 -L2; -L2  L1]
     end
 
     function B_stance(
-        x::DiffVector
-    )::DiffMatrix
+        x::Vector{<:DiffFloat}
+    )::Matrix{<:DiffFloat}
         L1, L2 = get_unit_length(x)
         return [L1  L2; L2 -L1; zeros(2,2)]
     end
@@ -82,9 +82,9 @@ function hopper(
     function dynamics(
         control_allocation::Function,
         gravity::Vector{<:Real},
-        x::DiffVector,
-        u::DiffVector
-    )::DiffVector
+        x::Vector{<:DiffFloat},
+        u::Vector{<:DiffFloat}
+    )::Vector{<:DiffFloat}
         B = control_allocation(x)
         return [x[5:8]; gravity + M\(B*u)]
     end
