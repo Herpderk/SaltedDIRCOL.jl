@@ -11,16 +11,16 @@ function bouncing_ball(
     # State space: x, y, xdot, ydot
     nx = 4
     nu = 1
-    dynamics = (x,u) -> [x[3:4]; 0.0; u[1] - g]
+    dynamics = (x::DiffVector, u::DiffVector) -> [x[3:4]; 0.0; u[1] - g]
 
     # Define apex transition
-    g_apex = x -> x[4]
-    R_apex = x -> x
+    g_apex = x::DiffVector -> x[4]
+    R_apex = x::DiffVector -> x
     apex = Transition(dynamics, dynamics, g_apex, R_apex)
 
     # Define impact transition
-    g_impact = x -> x[2]
-    R_impact = x -> [x[1:3]; -e * x[4]]
+    g_impact = x::DiffVector -> x[2]
+    R_impact = x::DiffVector -> [x[1:3]; -e * x[4]]
     impact = Transition(dynamics, dynamics, g_impact, R_impact)
 
     # Link transitions

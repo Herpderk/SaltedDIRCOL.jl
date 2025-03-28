@@ -63,7 +63,13 @@ ImplicitIntegrator(method_name::Symbol) = ImplicitIntegrator(
     get_module_function(Implicit, method_name)
 )
 ImplicitIntegrator(explicit::ExplicitIntegrator) = ImplicitIntegrator(
-    (dynamics, x0, u0, x1, Δt) -> explicit(dynamics, x0, u0, Δt) - x1
+    (
+        dynamics::Function,
+        x0::DiffVector,
+        u0::DiffVector,
+        x1::DiffVector,
+        Δt::AbstractFloat
+    ) -> explicit(dynamics, x0, u0, Δt) - x1
 )
 
 const Integrator = Union{ExplicitIntegrator, ImplicitIntegrator}

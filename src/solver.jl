@@ -99,42 +99,42 @@ struct SolverCallbacks
 
         # Define objective
         yref = compose_trajectory(params.dims, params.idx, xrefs, urefs)
-        f = y -> params.objective(yref, y)
+        f = y::DiffVector -> params.objective(yref, y)
 
         # Compose inequality constraints
         gs = Vector{Function}([
-            y -> guard_keepout(params, sequence, term_guard, y);
+            y::DiffVector -> guard_keepout(params, sequence, term_guard, y);
         ])
         if !isnothing(params.system.stage_ineq_constr)
-            push!(gs, y -> stage_inequality_constraint(params, y))
+            push!(gs, y::DiffVector -> stage_inequality_constraint(params, y))
         end
         if !isnothing(params.system.term_ineq_constr)
-            push!(gs, y -> terminal_inequality_constraint(params, y))
+            push!(gs, y::DiffVector -> terminal_inequality_constraint(params, y))
         end
-        g = y -> vcat([g(y) for g = gs]...)
+        g = y::DiffVector -> vcat([g(y) for g = gs]...)
 
         # Compose equality constraints
         hs = Vector{Function}([
-            y -> initial_condition(params, xic, y);
-            y -> dynamics_defect(params, sequence, y, params.Δt);
-            y -> guard_touchdown(params, sequence, y)
+            y::DiffVector -> initial_condition(params, xic, y);
+            y::DiffVector -> dynamics_defect(params, sequence, y, params.Δt);
+            y::DiffVector -> guard_touchdown(params, sequence, y)
         ])
         if !isnothing(xgc)
-            push!(hs, y -> goal_condition(params, xgc, y))
+            push!(hs, y::DiffVector -> goal_condition(params, xgc, y))
         end
         if !isnothing(params.system.stage_eq_constr)
-            push!(hs, y -> stage_equality_constraint(params, y))
+            push!(hs, y::DiffVector -> stage_equality_constraint(params, y))
         end
         if !isnothing(params.system.term_eq_constr)
-            push!(hs, y -> terminal_equality_constraint(params, y))
+            push!(hs, y::DiffVector -> terminal_equality_constraint(params, y))
         end
-        h = y -> vcat([h(y) for h = hs]...)
+        h = y::DiffVector -> vcat([h(y) for h = hs]...)
 
         # Compose all constraints
-        c = y -> [g(y); h(y)]
+        c = y::DiffVector -> [g(y); h(y)]
 
         # Define constraint component of Lagrangian
-        Lc = (y, λ) -> λ' * c(y)
+        Lc = (y::DiffVector, λ::Vector{<:AbstractFloat}) -> λ' * c(y)
 
         # Get constraint / dual variable dimensions
         yinf = fill(Inf, params.dims.ny)
@@ -144,15 +144,21 @@ struct SolverCallbacks
 
         # Autodiff all callbacks
         println("forward-diffing...")
-        f_grad = y -> ForwardDiff.gradient(f, y)
-        g_jac = y -> ForwardDiff.jacobian(g, y)
-        h_jac = y -> ForwardDiff.jacobian(h, y)
-        c_jac = y -> ForwardDiff.jacobian(c, y)
-        f_hess = y -> ForwardDiff.hessian(f, y)
+        f_grad = y::DiffVector -> ForwardDiff.gradient(f, y)
+        g_jac = y::DiffVector -> ForwardDiff.jacobian(g, y)
+        h_jac = y::DiffVector -> ForwardDiff.jacobian(h, y)
+        c_jac = y::DiffVector -> ForwardDiff.jacobian(c, y)
+        f_hess = y::DiffVector -> ForwardDiff.hessian(f, y)
         if gauss_newton
-            Lc_hess = (y, λ) -> zeros(params.dims.ny, params.dims.ny)
+            Lc_hess = (
+                y::DiffVector,
+                λ::Vector{<:AbstractFloat}
+            ) -> zeros(params.dims.ny, params.dims.ny)
         else
-            Lc_hess = (y, λ) -> ForwardDiff.hessian(dy -> Lc(dy, λ), y)
+            Lc_hess = (
+                y::DiffVector,
+                λ::Vector{<:AbstractFloat}
+            ) -> ForwardDiff.hessian(dy::DiffVector -> Lc(dy, λ), y)
         end
 
         # Get constraint jacobian and Lagrangian hessian sparsity patterns

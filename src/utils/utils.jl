@@ -4,7 +4,7 @@ function get_module_function_names(
     mod::Module
 )::Vector{Symbol}
     syms = names(mod, all=true)
-    functions = filter(sym -> isa(getproperty(mod, sym), Function), syms)
+    functions = filter(sym::Symbol -> isa(getproperty(mod,sym), Function), syms)
     return functions
 end
 
