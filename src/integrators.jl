@@ -18,6 +18,20 @@ module Explicit
         k4 = dynamics(x0 + Δt*k3, u0)
         return x0 + Δt/6*(k1 + 2*k2 + 2*k3 + k4)
     end
+
+    """
+    """
+    function rk3(
+        dynamics::Function,
+        x0::Vector{<:DiffFloat},
+        u0::Vector{<:DiffFloat},
+        Δt::DiffFloat
+    )::Vector{<:DiffFloat}
+        k1 = dynamics(x0, u0)
+        k2 = dynamics(x0 + Δt/2*k1, u0)
+        k3 = dynamics(x0 - Δt*k1 + 2*Δt*k2, u0)
+        return x0 + Δt/6*(k1 + 4*k2 + k3)
+    end
 end
 
 
@@ -68,7 +82,7 @@ ImplicitIntegrator(explicit::ExplicitIntegrator) = ImplicitIntegrator(
         x0::Vector{<:DiffFloat},
         u0::Vector{<:DiffFloat},
         x1::Vector{<:DiffFloat},
-        Δt::AbstractFloat
+        Δt::DiffFloat
     ) -> explicit(dynamics, x0, u0, Δt) - x1
 )
 

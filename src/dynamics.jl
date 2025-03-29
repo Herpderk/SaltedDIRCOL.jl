@@ -10,13 +10,15 @@ struct SaltationMatrix
     reset::Function
 end
 
+"""
+"""
 function (transition::SaltationMatrix)(
     x::Vector{<:DiffFloat},
     u::Vector{<:DiffFloat}
 )::Matrix{<:DiffFloat}
     xJ = transition.reset(x)
-    g_grad = ForwardDiff.gradient(transition.guard, x)
-    R_jac = ForwardDiff.jacobian(transition.reset, x)
+    g_grad = FD.gradient(transition.guard, x)
+    R_jac = FD.jacobian(transition.reset, x)
     return (
         R_jac
         + (transition.flow_J(xJ, u) - R_jac * transition.flow_I(x, u))

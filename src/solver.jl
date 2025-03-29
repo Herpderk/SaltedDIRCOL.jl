@@ -92,18 +92,24 @@ struct SolverCallbacks
         urefs::Vector{<:AbstractFloat},
         xic::Vector{<:AbstractFloat},
         xgc::Union{Nothing, Vector{<:AbstractFloat}} = nothing;
-        gauss_newton::Bool = false
+        gauss_newton::Bool = false,
+        salted::Bool = false
     )::SolverCallbacks
         # Enforce transition sequence timing rules
         assert_timings(params, sequence)
+        println("forward diffing...")
 
         # Define objective
         yref = compose_trajectory(params.dims, params.idx, xrefs, urefs)
         f = y::Vector{<:DiffFloat} -> params.objective(yref, y)
+        f_grad = y::Vector{<:DiffFloat} -> FD.gradient(f, y)
+        f_hess = y::Vector{<:DiffFloat} -> FD.hessian(f, y)
 
         # Compose inequality constraints
         gs = Vector{Function}([
-            y::Vector{<:DiffFloat} -> guard_keepout(params, sequence, term_guard, y);
+            y::Vector{<:DiffFloat} -> guard_keepout(
+                params, sequence, term_guard, y
+            )
         ])
         if !isnothing(params.system.stage_ineq_constr)
             push!(gs, y::Vector{<:DiffFloat} -> stage_inequality_constraint(params, y))
@@ -111,44 +117,70 @@ struct SolverCallbacks
         if !isnothing(params.system.term_ineq_constr)
             push!(gs, y::Vector{<:DiffFloat} -> terminal_inequality_constraint(params, y))
         end
-        g = y::Vector{<:DiffFloat} -> vcat([g(y) for g = gs]...)
+        g = y::Vector{<:DiffFloat} -> vcat([g_func(y) for g_func = gs]...)
+        g_jac = y::Vector{<:DiffFloat} -> vcat(
+            [FD.jacobian(g_func,y) for g_func = gs]...
+        )
 
         # Compose equality constraints
         hs = Vector{Function}([
-            y::Vector{<:DiffFloat} -> initial_condition(params, xic, y);
-            y::Vector{<:DiffFloat} -> dynamics_defect(params, sequence, y, params.Δt);
-            y::Vector{<:DiffFloat} -> guard_touchdown(params, sequence, y)
+            y::Vector{<:DiffFloat} -> dynamics_defect(
+                params, sequence, y, params.Δt
+            );
+            y::Vector{<:DiffFloat} -> guard_touchdown(params, sequence, y);
+            y::Vector{<:DiffFloat} -> initial_condition(params, xic, y)
         ])
         if !isnothing(xgc)
-            push!(hs, y::Vector{<:DiffFloat} -> goal_condition(params, xgc, y))
+            push!(hs, y::Vector{<:DiffFloat} -> goal_condition(
+                params, xgc, y
+            ))
         end
         if !isnothing(params.system.stage_eq_constr)
-            push!(hs, y::Vector{<:DiffFloat} -> stage_equality_constraint(params, y))
+            push!(hs, y::Vector{<:DiffFloat} -> stage_equality_constraint(
+                params, y
+            ))
         end
         if !isnothing(params.system.term_eq_constr)
-            push!(hs, y::Vector{<:DiffFloat} -> terminal_equality_constraint(params, y))
+            push!(hs, y::Vector{<:DiffFloat} -> terminal_equality_constraint(params, y
+            ))
         end
-        h = y::Vector{<:DiffFloat} -> vcat([h(y) for h = hs]...)
+        h = y::Vector{<:DiffFloat} -> vcat([h_func(y) for h_func = hs]...)
+        h_jac_ = y::Vector{<:DiffFloat} -> vcat(
+            [FD.jacobian(h_func, y) for h_func = hs]...
+        )
+
+        # Saltation matrix insertion
+        #h_jac_size = size(h_jac_(zeros(params.dims.ny)))
+        if salted
+            function h_jac(y::Vector{<:DiffFloat})::Matrix{<:DiffFloat}
+                h_jac_val = h_jac_(y)
+                for timing = sequence
+                    reset_jac_idx = [
+                        (1:params.dims.nx) .+ (timing.k-1)*params.dims.nx,
+                        params.idx.x[timing.k]
+                    ]
+                    xk = y[params.idx.x[timing.k]]
+                    uk = y[params.idx.u[timing.k]]
+                    #@show h_jac_val[reset_jac_idx...]
+                    h_jac_val[reset_jac_idx...] = (
+                        h_jac_val[reset_jac_idx...]
+                        / FD.jacobian(timing.transition.reset, xk)
+                        * timing.transition.saltation(xk, uk)
+                    )
+                    #@show h_jac_val[reset_jac_idx...]
+                end
+                return h_jac_val
+            end
+        else
+            h_jac = y::Vector{<:DiffFloat} -> h_jac_(y)
+        end
 
         # Compose all constraints
         c = y::Vector{<:DiffFloat} -> [g(y); h(y)]
+        c_jac = y::Vector{<:DiffFloat} -> [g_jac(y); h_jac(y)]
 
         # Define constraint component of Lagrangian
         Lc = (y::Vector{<:DiffFloat}, λ::Vector{<:AbstractFloat}) -> λ' * c(y)
-
-        # Get constraint / dual variable dimensions
-        yinf = fill(Inf, params.dims.ny)
-        ng = length(g(yinf))
-        nh = length(h(yinf))
-        dims = DualDimensions(ng, nh)
-
-        # Autodiff all callbacks
-        println("forward-diffing...")
-        f_grad = y::Vector{<:DiffFloat} -> ForwardDiff.gradient(f, y)
-        g_jac = y::Vector{<:DiffFloat} -> ForwardDiff.jacobian(g, y)
-        h_jac = y::Vector{<:DiffFloat} -> ForwardDiff.jacobian(h, y)
-        c_jac = y::Vector{<:DiffFloat} -> ForwardDiff.jacobian(c, y)
-        f_hess = y::Vector{<:DiffFloat} -> ForwardDiff.hessian(f, y)
         if gauss_newton
             Lc_hess = (
                 y::Vector{<:DiffFloat},
@@ -158,12 +190,18 @@ struct SolverCallbacks
             Lc_hess = (
                 y::Vector{<:DiffFloat},
                 λ::Vector{<:AbstractFloat}
-            ) -> ForwardDiff.hessian(dy::Vector{<:DiffFloat} -> Lc(dy, λ), y)
+            ) -> FD.hessian(dy::Vector{<:DiffFloat} -> Lc(dy,λ), y)
         end
+
+        # Get constraint / dual variable dimensions
+        yinf = ones(params.dims.ny)
+        ng = length(g(yinf))
+        nh = length(h(yinf))
+        dims = DualDimensions(ng, nh)
 
         # Get constraint jacobian and Lagrangian hessian sparsity patterns
         println("getting sparsity patterns...")
-        λinf = fill(Inf, dims.nc)
+        λinf = ones(dims.nc)
         c_jac_sp = SparsityPattern(c_jac(yinf))
         L_hess_sp = SparsityPattern(f_hess(yinf) + Lc_hess(yinf, λinf))
         return new(
@@ -223,7 +261,6 @@ struct IpoptCallbacks
                 rows .= cb.c_jac_sp.row_coords
                 cols .= cb.c_jac_sp.col_coords
             else
-                #values .= sparse(cb.c_jac(x)).nzval
                 c_jac = cb.c_jac(x)
                 @inbounds @simd for i = 1:cb.c_jac_sp.nzvals
                     values[i] = c_jac[

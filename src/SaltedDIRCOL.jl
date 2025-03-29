@@ -2,7 +2,7 @@ module SaltedDIRCOL
 
 using LinearAlgebra
 using SparseArrays
-using ForwardDiff
+import ForwardDiff as FD
 using Ipopt
 using Plots
 

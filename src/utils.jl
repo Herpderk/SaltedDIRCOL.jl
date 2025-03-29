@@ -1,4 +1,4 @@
-const DiffFloat = Union{AbstractFloat, ForwardDiff.Dual}
+const DiffFloat = Union{AbstractFloat, FD.Dual}
 
 """
 """
