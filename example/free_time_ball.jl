@@ -1,7 +1,7 @@
 using Pkg; Pkg.activate(joinpath(@__DIR__, ".."))
 using LinearAlgebra
 using Revise
-using SaltedDIRCOL
+using HybridTrajIpopt
 
 # Define elast bouncing ball model
 system = bouncing_ball()

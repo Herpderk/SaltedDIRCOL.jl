@@ -1,5 +1,5 @@
 module Explicit
-    using ..SaltedDIRCOL: DiffFloat
+    using ..HybridTrajIpopt: DiffFloat
 
     """
         rk4(dynamics, x0, u0, x1, Δt)
@@ -22,7 +22,7 @@ end
 
 
 module Implicit
-    using ..SaltedDIRCOL: DiffFloat
+    using ..HybridTrajIpopt: DiffFloat
 
     """
         hermite_simpson(dynamics, x0, u0, x1, Δt)

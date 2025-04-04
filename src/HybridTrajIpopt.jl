@@ -1,4 +1,4 @@
-module SaltedDIRCOL
+module HybridTrajIpopt
 
 using LinearAlgebra
 using SparseArrays
@@ -30,4 +30,4 @@ include("solver.jl")
 include("constraints.jl")
 include("plotting.jl")
 
-end # module SaltedDIRCOL
+end # module HybridTrajIpopt
