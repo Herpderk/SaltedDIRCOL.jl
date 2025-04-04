@@ -45,12 +45,12 @@ cb = SolverCallbacks(
 y0 = zeros(params.dims.ny)
 sol = ipopt_solve(params, cb, y0)
 
-# Init TVLQR controller with RK4 integration
+# Init TVLQR policy with RK4 integration
 yref = sol.x
 rk4 = ExplicitIntegrator(:rk4)
 tvlqr = TimeVaryingLQR(params, rk4, Q, R, Qf, sequence, yref)
 
-# Simulate system forward in time with TVLQR controller and smaller time steps
+# Simulate system forward in time with TVLQR policy and smaller time steps
 speedup = 10
 N_sim = N * speedup
 Δt_sim = Δt / speedup

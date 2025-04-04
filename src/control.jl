@@ -1,6 +1,9 @@
 const VectorOrMatrix = Union{Vector{<:AbstractFloat}, Matrix{<:AbstractFloat}}
 
 """
+    get_tvlqr_gains(params, integrator, Q, R, Qf, sequence, yref)
+
+Computes the time-varying LQR gains about a nominal trajectory by solving the finite-horizon LQR problem via Riccati recursion.
 """
 function get_tvlqr_gains(
     params::ProblemParameters,
@@ -52,6 +55,9 @@ function get_tvlqr_gains(
 end
 
 """
+    TimeVaryingLQR(params, integrator, Q, R, Qf, sequence, yref)
+
+Callable struct that instantiates the time-varying LQR policy gains and references.
 """
 struct TimeVaryingLQR
     idx::PrimalIndices
@@ -72,6 +78,9 @@ struct TimeVaryingLQR
 end
 
 """
+    tvlqr(x, k)
+
+Callable struct method for the `TimeVaryingLQR` struct that computes the control input for a given state and time step index.
 """
 function (tvlqr::TimeVaryingLQR)(
     x::Vector{<:AbstractFloat},
@@ -119,9 +128,9 @@ function roll_out(
 end
 
 """
-    roll_out(system, integrator, N, Δt, us, x0, init_transition)
+    roll_out(system, integrator, N, Δt, tvlqr, x0, init_transition)
 
-Simulates a given system forward in time given an explicit integrator, horizon parameters, control sequence, and initial conditions. Returns the rolled out state trajectory.
+Simulates a given system forward in time given an explicit integrator, horizon parameters, time-varying LQR policy, and initial conditions. Returns the rolled out state trajectory.
 """
 function roll_out(
     system::HybridSystem,
