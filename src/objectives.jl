@@ -1,4 +1,7 @@
 """
+    TrajectoryCost(dims, idx, stage_cost, terminal_cost)
+
+Callable struct containing a given problem's dimensions, indices, and cost functions.
 """
 struct TrajectoryCost
     dims::PrimalDimensions
@@ -8,6 +11,9 @@ struct TrajectoryCost
 end
 
 """
+    cost(yref, y)
+
+Callable struct method for the `TrajectoryCost` struct that computes the accumulated cost over a trajectory given a sequence of references.
 """
 function (params::TrajectoryCost)(
     yref::Vector{<:AbstractFloat},

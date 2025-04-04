@@ -36,6 +36,9 @@ function bouncing_ball(
 end
 
 """
+    hopper(m1, m2, e=0.0, g=9.81, Llb=0.5, Lub=1.5)
+
+Returns the hybrid system model containing the modes and transitions of a planar (in)elastic hopper robot.
 """
 function hopper(
     m1::Real = 5.0,    # body mass

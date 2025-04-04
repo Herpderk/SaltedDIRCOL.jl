@@ -140,6 +140,9 @@ function goal_condition(
 end
 
 """
+    stage_inequality_constraint(params, y)
+
+Computes stage inequality constraint residuals.
 """
 function stage_inequality_constraint(
     params::ProblemParameters,
@@ -155,12 +158,15 @@ function stage_inequality_constraint(
 end
 
 """
+    stage_equality_constraint(params, y)
+
+Computes stage equality constraint residuals.
 """
 function stage_equality_constraint(
     params::ProblemParameters,
     y::Vector{<:DiffFloat}
 )::Vector{<:DiffFloat}
-    c = [zeros(eltype(y), system.stage_nh) for k = 1 : params.dims.N-1]
+    c = [zeros(eltype(y), params.system.stage_nh) for k = 1 : params.dims.N-1]
     for k = 1 : params.dims.N-1
         xk = params.idx.x[k]
         uk = params.idx.u[k]
@@ -170,6 +176,9 @@ function stage_equality_constraint(
 end
 
 """
+    terminal_inequality_constraint(params, y)
+
+Computes terminal inequality constraint residuals.
 """
 function terminal_inequality_constraint(
     params::ProblemParameters,
@@ -179,6 +188,9 @@ function terminal_inequality_constraint(
 end
 
 """
+    terminal_equality_constraint(params, y)
+
+Computes terminal equality constraint residuals.
 """
 function terminal_equality_constraint(
     params::ProblemParameters,

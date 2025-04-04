@@ -48,7 +48,7 @@ cb = SolverCallbacks(
 Δts = fill(Δt, N-1)
 us = urefs
 rk4 = ExplicitIntegrator(:rk4)
-xs = roll_out(rk4, system, N, Δt, us, xic, :impact)
+xs = roll_out(system, rk4, N, Δt, us, xic, :impact)
 y0 = compose_trajectory(params.dims, params.idx, xs, us, Δts)
 plot_2d_trajectory(params, (1,2), y0; title="Initial Guess")
 

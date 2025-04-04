@@ -20,7 +20,7 @@ N = 25
 hs = ImplicitIntegrator(:hermite_simpson)
 params = ProblemParameters(
     system, hs, stage, terminal, N;
-    Δtlb=Δtlb, Δtub=Δtub
+    #Δtlb=Δtlb, Δtub=Δtub
 )
 
 # Define transition sequence and terminal guard
@@ -44,7 +44,7 @@ urefs = zeros((N-1) * system.nu)
 us = urefs
 
 rk4 = ExplicitIntegrator(:rk4)
-xs = roll_out(rk4, system, N, Δt, us, xic, :impact)
+xs = roll_out(system, rk4, N, Δt, us, xic, :impact)
 y0 = compose_trajectory(params.dims, params.idx, xs, us)
 plot_2d_trajectory(
     params, (1,2), y0;
@@ -56,14 +56,10 @@ plot_2d_trajectory(
 # Solve using Ipopt
 cb = SolverCallbacks(
     params, sequence, term_guard, xrefs, urefs, xic;
-    gauss_newton=false
+    gauss_newton=true
 )
 sol = ipopt_solve(params, cb, y0)
 
 # Visualize
-plot_2d_trajectory(
-    params, (1,2), sol.x;
-    xlim = (-10, 10),
-    ylim = (-10, 10)
-)
+plot_2d_trajectory(params, (1,2), sol.x)
 nothing

@@ -1,4 +1,13 @@
 """
+    plot_2d_trajectory(
+        params, vis_state_idx, y;
+        animate=false, title="System Trajectory",
+        xlabel="x", ylabel="y", xlim=(0.0, 10.0), ylim=(0.0, 10.0),
+        markershape=:none, markercolor=:blue, markersize=2.0,
+        linecolor=:blue, linewidth=2.0
+    )
+
+Plots 2D trajectories of the states in corresponding to two given indices within a given primal trajectory.
 """
 function plot_2d_trajectory(
     params::ProblemParameters,

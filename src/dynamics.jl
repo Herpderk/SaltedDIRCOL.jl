@@ -118,10 +118,13 @@ mutable struct HybridSystem
 end
 
 """
+    roll_out(system, integrator, N, Δt, us, x0, init_transition)
+
+Simulates a given system forward in time given an explicit integrator, horizon parameters, control sequence, and initial conditions. Returns the rolled out state trajectory.
 """
 function roll_out(
-    integrator::ExplicitIntegrator,
     system::HybridSystem,
+    integrator::ExplicitIntegrator,
     N::Int,
     Δt::AbstractFloat,
     us::Vector{<:AbstractFloat},
