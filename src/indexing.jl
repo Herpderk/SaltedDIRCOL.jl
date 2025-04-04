@@ -60,6 +60,11 @@ struct PrimalIndices
     end
 end
 
+"""
+    compose_trajectory(dims, idx, xs, us)
+
+Interleaves sequences of states and inputs into a single trajectory of primal variables given the problem dimensions and indices.
+"""
 function compose_trajectory(
     dims::PrimalDimensions,
     idx::PrimalIndices,
@@ -79,6 +84,11 @@ function compose_trajectory(
     return y
 end
 
+"""
+    compose_trajectory(dims, idx, xs, us, Δts)
+
+Interleaves sequences of states, inputs and time steps into a single trajectory of primal variables given the problem dimensions and indices.
+"""
 function compose_trajectory(
     dims::PrimalDimensions,
     idx::PrimalIndices,
@@ -94,14 +104,26 @@ function compose_trajectory(
 end
 
 """
+    decompose_trajectory(idx, xs, us)
+
+Separates a trajectory of primal variables into sequences of states, inputs, and time steps given the problem indices.
 """
 function decompose_trajectory(
     idx::PrimalIndices,
     y::Vector{<:AbstractFloat}
-)::Tuple{Vector{<:AbstractFloat}, Vector{<:AbstractFloat}}
+)::Tuple{
+    Vector{<:AbstractFloat},
+    Vector{<:AbstractFloat},
+    Union{Nothing, Vector{<:AbstractFloat}}
+}
     xs = vcat([y[i] for i = idx.x[1 : end]]...)
     us = vcat([y[i] for i = idx.u[1 : end]]...)
-    return xs, us
+    if !isnothing(idx.Δt)
+        Δts = vcat([y[i] for i = idx.u[1 : end]]...)
+    else
+        Δts = nothing
+    end
+    return xs, us, Δts
 end
 
 """

@@ -1,6 +1,9 @@
 const DiffFloat = Union{AbstractFloat, ForwardDiff.Dual}
 
 """
+    get_module_function_names(mod)
+
+Returns the symbols of module properties that correspond to functions.
 """
 function get_module_function_names(
     mod::Module
@@ -11,6 +14,9 @@ function get_module_function_names(
 end
 
 """
+    get_module_function(mod, func_name)
+
+Returns the function corresponding to the given name within the given module.
 """
 function get_module_function(
     mod::Module,
