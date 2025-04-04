@@ -45,16 +45,17 @@ cb = SolverCallbacks(
 
 # Initial guess
 Δt = 0.05
-Δts = fill(Δt, N-1)
 us = urefs
 rk4 = ExplicitIntegrator(:rk4)
 xs = roll_out(system, rk4, N, Δt, us, xic, :impact)
-y0 = compose_trajectory(params.dims, params.idx, xs, us, Δts)
-plot_2d_trajectory(params, (1,2), y0; title="Initial Guess")
+plot_2d_states(N, system.nx, (1,2), xs; title="Initial Guess")
 
 # Solve
+Δts = fill(Δt, N-1)
+y0 = compose_trajectory(params.dims, params.idx, xs, us, Δts)
 sol = ipopt_solve(params, cb, y0; max_iter=1000)
 
 # Visualize
-plot_2d_trajectory(params, (1,2), sol.x;)
+xs, us, Δts = decompose_trajectory(params.idx, sol.x)
+plot_2d_states(N, system.nx, (1,2), xs)
 nothing
