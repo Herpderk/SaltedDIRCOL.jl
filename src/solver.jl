@@ -143,7 +143,7 @@ struct SolverCallbacks
         dims = DualDimensions(ng, nh)
 
         # Autodiff all callbacks
-        println("forward-diffing...")
+        println("forward diffing...")
         f_grad = y::Vector{<:DiffFloat} -> ForwardDiff.gradient(f, y)
         g_jac = y::Vector{<:DiffFloat} -> ForwardDiff.jacobian(g, y)
         h_jac = y::Vector{<:DiffFloat} -> ForwardDiff.jacobian(h, y)
