@@ -155,19 +155,17 @@ struct SolverCallbacks
             function h_jac(y::Vector{<:DiffFloat})::Matrix{<:DiffFloat}
                 h_jac_val = h_jac_(y)
                 for timing = sequence
-                    reset_jac_idx = [
+                    reset_idx = [
                         (1:params.dims.nx) .+ (timing.k-1)*params.dims.nx,
                         params.idx.x[timing.k]
                     ]
                     xk = y[params.idx.x[timing.k]]
                     uk = y[params.idx.u[timing.k]]
-                    #@show h_jac_val[reset_jac_idx...]
-                    h_jac_val[reset_jac_idx...] = (
-                        h_jac_val[reset_jac_idx...]
+                    h_jac_val[reset_idx...] = (
+                        h_jac_val[reset_idx...]
                         / FD.jacobian(timing.transition.reset, xk)
                         * timing.transition.saltation(xk, uk)
                     )
-                    #@show h_jac_val[reset_jac_idx...]
                 end
                 return h_jac_val
             end
