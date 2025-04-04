@@ -8,7 +8,7 @@ system = bouncing_ball()
 
 # Define stage and terminal cost functions
 Q = 1e0 * diagm([1.0, 1.0, 0.0, 0.0])
-R = 1e-6 * I(system.nu)
+R = Matrix(1e-6 * I(system.nu))
 Qf = 1e3 * Q
 stage = (x,u) -> x'*Q*x + u'*R*u
 terminal = x -> x'*Qf*x
@@ -45,7 +45,15 @@ cb = SolverCallbacks(
 y0 = zeros(params.dims.ny)
 sol = ipopt_solve(params, cb, y0)
 
-# Visualize
-xs, us, Δts = decompose_trajectory(params.idx, sol.x)
-plot_2d_states(N, system.nx, (1,2), xs)
+# Init TVLQR policy with RK4 integration
+yref = sol.x
+rk4 = ExplicitIntegrator(:rk4)
+tvlqr = TimeVaryingLQR(params, rk4, Q, R, Qf, sequence, yref)
+
+# Simulate system forward in time with TVLQR policy and smaller time steps
+speedup = 10
+N_sim = N * speedup
+Δt_sim = Δt / speedup
+xs_sim = roll_out(system, rk4, N_sim, Δt_sim, tvlqr, xic, :impact)
+plot_2d_states(N_sim, system.nx, (1,2), xs_sim)
 nothing

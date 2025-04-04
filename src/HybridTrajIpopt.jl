@@ -13,12 +13,13 @@ export
         ExplicitIntegrator,
         ImplicitIntegrator,
         TransitionTiming,
-        plot_2d_trajectory,
         roll_out,
         compose_trajectory,
         decompose_trajectory,
         bouncing_ball,
-        hopper
+        hopper,
+        TimeVaryingLQR,
+        plot_2d_states
 
 include("utils.jl")
 include("indexing.jl")
@@ -28,6 +29,7 @@ include("models.jl")
 include("objectives.jl")
 include("solver.jl")
 include("constraints.jl")
+include("control.jl")
 include("plotting.jl")
 
 end # module HybridTrajIpopt

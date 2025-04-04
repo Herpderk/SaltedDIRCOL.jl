@@ -104,7 +104,7 @@ function compose_trajectory(
 end
 
 """
-    decompose_trajectory(idx, xs, us)
+    decompose_trajectory(idx, y)
 
 Separates a trajectory of primal variables into sequences of states, inputs, and time steps given the problem indices.
 """

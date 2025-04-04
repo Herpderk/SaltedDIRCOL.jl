@@ -1,31 +1,5 @@
 """
-    SaltationMatrix(flow_I, flow_J, guard, reset)
-
-Derives the saltation matrix function for a given hybrid transition.
-"""
-struct SaltationMatrix
-    flow_I::Function
-    flow_J::Function
-    guard::Function
-    reset::Function
-end
-
-function (transition::SaltationMatrix)(
-    x::Vector{<:DiffFloat},
-    u::Vector{<:DiffFloat}
-)::Matrix{<:DiffFloat}
-    xJ = transition.reset(x)
-    g_grad = ForwardDiff.gradient(transition.guard, x)
-    R_jac = ForwardDiff.jacobian(transition.reset, x)
-    return (
-        R_jac
-        + (transition.flow_J(xJ, u) - R_jac * transition.flow_I(x, u))
-        * g_grad' / (g_grad' * transition.flow_I(x,u))
-    )
-end
-
-"""
-    Transition(flow_I, flow_J, guard, reset)
+    Transition(flow_I, flow_J, guard, reset, next_transition=nothing)
 
 Contains all hybrid system objects pertaining to a hybrid transition.
 """
@@ -34,7 +8,6 @@ mutable struct Transition
     flow_J::Function
     guard::Function
     reset::Function
-    saltation::SaltationMatrix
     next_transition::Union{Nothing, Transition}
     function Transition(
         flow_I::Function,
@@ -43,8 +16,7 @@ mutable struct Transition
         reset::Function,
         next_transition::Union{Nothing, Transition} = nothing
     )::Transition
-        saltation = SaltationMatrix(flow_I, flow_J, guard, reset)
-        return new(flow_I, flow_J, guard, reset, saltation, next_transition)
+        return new(flow_I, flow_J, guard, reset, next_transition)
     end
 end
 
@@ -115,38 +87,4 @@ mutable struct HybridSystem
             transitions
         )
     end
-end
-
-"""
-    roll_out(system, integrator, N, Δt, us, x0, init_transition)
-
-Simulates a given system forward in time given an explicit integrator, horizon parameters, control sequence, and initial conditions. Returns the rolled out state trajectory.
-"""
-function roll_out(
-    system::HybridSystem,
-    integrator::ExplicitIntegrator,
-    N::Int,
-    Δt::AbstractFloat,
-    us::Vector{<:AbstractFloat},
-    x0::Vector{<:AbstractFloat},
-    init_transition::Symbol
-)::Vector{<:AbstractFloat}
-    # Init loop variables
-    u_idx = [(1:system.nu) .+ (k-1)*system.nu for k = 1:N-1]
-    xs = [zeros(system.nx) for k = 1:N]
-    xs[1] = x0
-    curr_trans = system.transitions[init_transition]
-
-    # Roll out over time horizon
-    for k = 1:N-1
-        xk = xs[k]
-        # Reset if guard is hit
-        if curr_trans.guard(xk) <= 0.0
-            xk = curr_trans.reset(xk)
-            curr_trans = curr_trans.next_transition
-        end
-        # Integrate smooth dynamics
-        xs[k+1] = integrator(curr_trans.flow_I, xk, us[u_idx[k]], Δt)
-    end
-    return vcat(xs...)
 end
